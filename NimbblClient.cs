@@ -1,0 +1,101 @@
+using System;
+using Newtonsoft.Json.Serialization;
+using Newtonsoft.Json;
+using System.Threading.Tasks;
+using System.Text;
+using System.Security.Cryptography;
+
+namespace nimbbl.checkout
+{
+    /// <summary>
+    /// This class is used as main class to interact with Nimbbl APIs using RestClient
+    /// </summary>
+    public class NimbblClient : IDisposable
+    {
+        public string BaseUrl { get; private set; }
+        public string AccessKey { get; private set; }
+        public string SecretKey { get; private set; }
+        private RestClient _restClient;
+        public TokenResponse Token { get; private set; }
+        public NimbblClient(string baseUrl, string accessKey, string secretKey)
+        {
+            this.BaseUrl = baseUrl;
+            this.AccessKey = accessKey;
+            this.SecretKey = secretKey;
+
+            _restClient = new RestClient(baseUrl);
+        }
+
+        /// <summary>
+        /// Generates the Authentication Token 
+        /// </summary>
+        /// <returns></returns>
+        public async Task<TokenResponse> GenerateToken()
+        {
+            var request = new TokenRequest() { AccessKey = AccessKey, AccessSecret = SecretKey };
+            try
+            {
+                Token = await _restClient.PostAsync<TokenResponse>(_url_generate_token, request);
+                _restClient.SetBearerToken(Token.Token);
+                return Token;
+            }
+            catch (System.Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Creates a Nimbbl Order
+        /// </summary>
+        /// <param name="order"></param>
+        /// <returns></returns>
+        public async Task<Order> CreateOrder(Order order)
+        {
+            try
+            {
+                var createdOrder = await _restClient.PostAsync<Order>(_url_create_order, order);
+                return createdOrder;
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+        }
+
+        public bool ValidateSignature(string invoiceId, string transactionId, string signature)
+        {
+            string generatedSignature = HmacSHA256(this.SecretKey, String.Format("{0}|{1}", invoiceId, transactionId));
+            return signature.Equals(generatedSignature);
+        }
+
+        public void Dispose()
+        {
+            _restClient?.Dispose();
+        }
+
+        static string HmacSHA256(string key, string data)
+        {
+            string hash;
+            ASCIIEncoding encoder = new ASCIIEncoding();
+            Byte[] code = encoder.GetBytes(key);
+            using (HMACSHA256 hmac = new HMACSHA256(code))
+            {
+                Byte[] hmBytes = hmac.ComputeHash(encoder.GetBytes(data));
+                hash = ToHexString(hmBytes);
+            }
+            return hash;
+        }
+        static string ToHexString(byte[] array)
+        {
+            StringBuilder hex = new StringBuilder(array.Length * 2);
+            foreach (byte b in array)
+            {
+                hex.AppendFormat("{0:x2}", b);
+            }
+            return hex.ToString();
+        }
+        private const string _url_generate_token = "/api/v2/generate-token";
+        private const string _url_create_order = "/api/v2/create-order";
+    }
+}

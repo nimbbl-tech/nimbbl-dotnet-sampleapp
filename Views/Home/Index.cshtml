@@ -1,0 +1,28 @@
+﻿@model SampleAspNetCore.Models.HomeModel
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <script src="@Model.NimbblHostUrl/static/assets/js/checkout.js"></script>
+    <script>
+        var options = {
+            "access_key": '@Model.AccessKey', // Enter the Key ID generated from the Dashboard
+            "order_id": '@Model.OrderId', // Enter the order_id from the create-order api
+            "callback_handler": function (response) {
+                alert(response.nimbbl_transaction_id);
+                alert(response.nimbbl_order_id);
+                alert(response.nimbbl_signature);
+                alert(response.status);
+            },
+            "custom": {
+                "key_1": "val_1",
+                "key_2": "val_2"
+            },
+        };
+
+        var checkout = new NimbblCheckout(options);
+        checkout.open(options.order_id);
+    </script>
+</div>
