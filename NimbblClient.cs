@@ -19,6 +19,8 @@ namespace nimbbl.checkout
         public TokenResponse Token { get; private set; }
         public Order Task{ get; private set; } 
 
+        //public Transaction Task{ get; private set; }
+
         public NimbblClient(string baseUrl, string accessKey, string secretKey)
         {
             this.BaseUrl = baseUrl;
@@ -65,7 +67,7 @@ namespace nimbbl.checkout
             }
         }
 
-        public async Task<Order> Fetch(string id)
+        public async Task<Order> FetchOrder(string id)
         {
             try
             {
@@ -89,6 +91,18 @@ namespace nimbbl.checkout
         //     return orders;
         // }
 
+        public async Task<Transaction> FetchTransactionbyID(string id)
+        {
+            try
+            {
+                var fetchTransaction = await _restClient.PostAsync<Transaction>(_url_fetchTransaction_byID, id);
+                return fetchTransaction;
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+        }
 
         public bool ValidateSignature(string invoiceId, string transactionId, string signature)
         {
@@ -128,6 +142,10 @@ namespace nimbbl.checkout
         private const string _url_fetch_order = "/api/v2/get-order/:order_id";
 
         private const string _url_fetchAll_order = "/api/v2/";
+
+        private const string _url_fetchTransaction_byID = "/api/v2/fetch-transaction/:transaction_id";
+
+        private const string _url_fetchTransaction_byOrderID = "/api/v2/order/fetch-transactions/:order_id";
 
     }
 }
