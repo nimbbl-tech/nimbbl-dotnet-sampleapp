@@ -16,7 +16,7 @@ namespace SampleAspNetCore.Controllers
             //NimbblClient client = new NimbblClient("<base_url>", "<access_key>", "<access_secret>");
             NimbblClient client = new NimbblClient("https://api.nimbbl.tech/api/'", "access_key_pKx7rdG51VWgy3q2", "access_secret_Wy7VPWryBYm9D3pw");
             var token = await client.GenerateToken();
-            var orderfetch = await client.Fetch("");
+            
             var order = await client.CreateOrder(new Order{
                 Invoice_Id = "1234",
                 Amount_Before_Tax = 4,
@@ -52,6 +52,11 @@ namespace SampleAspNetCore.Controllers
                     }
                 }
             });
+
+            var orderfetch = await client.FetchOrder("insert test case");
+            var transactionfetchbyID = await client.FetchTransactionbyID("insert test case");
+            var transactionfetchbyOrderID = await client.FetchTransactionbyOrderID("insert test case");
+
             return  View(new HomeModel(){ NimbblHostUrl = "<base_url>", AccessKey = token.AuthPrincipal.Access_Key, OrderId = order.Order_Id });
         }
         public IActionResult Privacy()

@@ -104,6 +104,19 @@ namespace nimbbl.checkout
             }
         }
 
+        public async Task<Transaction> FetchTransactionbyOrderID(string id)
+        {
+            try
+            {
+                var fetchTransaction = await _restClient.PostAsync<Transaction>(_url_fetchTransaction_byOrderID, id);
+                return fetchTransaction;
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+        }
+
         public bool ValidateSignature(string invoiceId, string transactionId, string signature)
         {
             string generatedSignature = HmacSHA256(this.SecretKey, String.Format("{0}|{1}", invoiceId, transactionId));
