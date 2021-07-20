@@ -68,7 +68,7 @@ namespace SampleAspNetCore.Controllers
             //var request = new RestRequest(Method.GET);
             //request.AddHeader("Authorization", "Bearer <token>");
             //IRestResponse response = client.Execute(request);
-            //return  View(new HomeModel(){ NimbblHostUrl = "<base_url>", AccessKey = token.AuthPrincipal.Access_Key, OrderId = order.Order_Id });
+            return  View(new HomeModel(){ NimbblHostUrl = "<base_url>", AccessKey = token.AuthPrincipal.Access_Key, OrderId = order.Order_Id });
         }
         public IActionResult Privacy()
         {
