@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System.Threading.Tasks;
 using System.Text;
 using System.Security.Cryptography;
+using 
 
 namespace nimbbl.checkout
 {
@@ -80,16 +81,16 @@ namespace nimbbl.checkout
             }
         }
 
-        // public async Task<Order> All(string id)
-        // {
-        //     List<Entity> entities = base.All(options);
-        //     List<Order> orders = new List<Order>();
-        //     foreach (Entity entity in entities)
-        //     {
-        //         orders.Add(entity as Order);
-        //     }
-        //     return orders;
-        // }
+        public async Task<Order> All(string id)
+        {
+            List<Entity> entities = base.All(options);
+            List<Order> orders = new List<Order>();
+            foreach (Entity entity in entities)
+            {
+                orders.Add(entity as Order);
+            }
+            return orders;
+        }
 
         public async Task<Transaction> FetchTransactionbyID(string id)
         {
