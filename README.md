@@ -1,6 +1,6 @@
-# Nimbbl Test App for ASP.NET Core MVC
+# Nimbbl Kit for ASP.NET Core MVC
 
-Sample app for Nimbbl .NET Integration
+Server kit for Nimbbl .NET Integration
 
 ## Requirements
 - Latest [Dotnet Core](https://dotnet.microsoft.com/download) 
@@ -18,7 +18,5 @@ Sample app for Nimbbl .NET Integration
     ```
 5. Hit `F5` to build and run the project 
 
-Note:
-1. This is just a sample project which will help you understand how to integration the Nimbbl Checkout in ASP.NET Core MVC project. 
 
-For any assistance, you can reach us support@nimbbl.biz
+For any assistance, you can reach us support@nimbbl.biz/somya@nimbbl.biz

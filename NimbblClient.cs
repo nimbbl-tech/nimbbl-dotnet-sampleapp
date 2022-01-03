@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System.Threading.Tasks;
 using System.Text;
 using System.Security.Cryptography;
+using 
 
 namespace nimbbl.checkout
 {
@@ -17,6 +18,10 @@ namespace nimbbl.checkout
         public string SecretKey { get; private set; }
         private RestClient _restClient;
         public TokenResponse Token { get; private set; }
+        public Order Task{ get; private set; } 
+
+        //public Transaction Task{ get; private set; }
+
         public NimbblClient(string baseUrl, string accessKey, string secretKey)
         {
             this.BaseUrl = baseUrl;
@@ -63,6 +68,56 @@ namespace nimbbl.checkout
             }
         }
 
+        public async Task<Order> FetchOrder(string id)
+        {
+            try
+            {
+                var fetchOrder = await _restClient.PostAsync<Order>(_url_fetch_order, id);
+                return fetchOrder;
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+        }
+
+        public async Task<Order> All(string id)
+        {
+            List<Entity> entities = base.All(options);
+            List<Order> orders = new List<Order>();
+            foreach (Entity entity in entities)
+            {
+                orders.Add(entity as Order);
+            }
+            return orders;
+        }
+
+        public async Task<Transaction> FetchTransactionbyID(string id)
+        {
+            try
+            {
+                var fetchTransaction = await _restClient.PostAsync<Transaction>(_url_fetchTransaction_byID, id);
+                return fetchTransaction;
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+        }
+
+        public async Task<Transaction> FetchTransactionbyOrderID(string id)
+        {
+            try
+            {
+                var fetchTransaction = await _restClient.PostAsync<Transaction>(_url_fetchTransaction_byOrderID, id);
+                return fetchTransaction;
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+        }
+
         public bool ValidateSignature(string invoiceId, string transactionId, string signature)
         {
             string generatedSignature = HmacSHA256(this.SecretKey, String.Format("{0}|{1}", invoiceId, transactionId));
@@ -97,5 +152,14 @@ namespace nimbbl.checkout
         }
         private const string _url_generate_token = "/api/v2/generate-token";
         private const string _url_create_order = "/api/v2/create-order";
+
+        private const string _url_fetch_order = "/api/v2/get-order/:order_id";
+
+        private const string _url_fetchAll_order = "/api/v2/";
+
+        private const string _url_fetchTransaction_byID = "/api/v2/fetch-transaction/:transaction_id";
+
+        private const string _url_fetchTransaction_byOrderID = "/api/v2/order/fetch-transactions/:order_id";
+
     }
 }
