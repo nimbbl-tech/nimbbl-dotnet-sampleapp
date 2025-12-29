@@ -35,3 +35,12 @@ msbuild.wrn
 
 # Visual Studio 2015
 .vs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Log files
+logs/
+*.log
