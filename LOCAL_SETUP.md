@@ -260,5 +260,5 @@ If you encounter any issues:
 
 - [.NET Documentation](https://docs.microsoft.com/dotnet/)
 - [ASP.NET Core Documentation](https://docs.microsoft.com/aspnet/core)
-- [Nimbbl Dashboard](https://dashboard.nimbbl.tech)
+- [Nimbbl Dashboard](https://commandcenter.nimbbl.tech/)
 
