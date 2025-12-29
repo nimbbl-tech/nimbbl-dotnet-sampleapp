@@ -1,0 +1,148 @@
+@model MerchantSampleApp.Models.PaymentSuccessViewModel
+@{
+    Layout = null;
+}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Success - Nimbbl</title>
+  <link rel="stylesheet" href="/css/site.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f5f5f5;
+    }
+    .payment-result-wrapper {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+    .success-header img {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 1rem;
+    }
+    .success-header h1 {
+      color: #28a745;
+      margin: 0.5rem 0;
+    }
+    .amount {
+      font-size: 1.2rem;
+      color: #666;
+      margin: 0.5rem 0;
+    }
+    .transaction-details {
+      margin: 2rem 0;
+      text-align: left;
+    }
+    .transaction-details-title {
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+    }
+    .redirect-button {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    .redirect-timer {
+      margin-top: 1rem;
+      color: #666;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+<div class="payment-result-wrapper">
+  <div class="payment-result-container">
+    <div class="success-header">
+      <h1>✓ Payment Successful</h1>
+      @if (!string.IsNullOrEmpty(Model.FormattedAmount) && !string.IsNullOrEmpty(Model.Currency))
+      {
+        <p class="amount">for @Model.Currency @Model.FormattedAmount</p>
+      }
+    </div>
+    
+    <div class="zigzag-box">
+      @if (!string.IsNullOrEmpty(Model.TransactionId) || !string.IsNullOrEmpty(Model.PaymentMode) || !string.IsNullOrEmpty(Model.UserName))
+      {
+        <div class="transaction-details">
+          <p class="transaction-details-title">Transaction Details</p>
+          <div class="transaction-details-content">
+            @if (!string.IsNullOrEmpty(Model.TransactionId))
+            {
+              <div class="detail-item">
+                <span class="detail-label">Transaction ID</span>
+                <span class="detail-value">@Model.TransactionId</span>
+              </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.PaymentMode))
+            {
+              <div class="detail-item">
+                <span class="detail-label">Mode of Payment</span>
+                <span class="detail-value">@Model.PaymentMode</span>
+              </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.UserName))
+            {
+              <div class="detail-item">
+                <span class="detail-label">Name of the Sender</span>
+                <span class="detail-value">@Model.UserName</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+      
+      <a href="/" class="redirect-button" id="redirectButton">Go to Merchant Sample App</a>
+      <p class="redirect-timer" id="redirectTimer">Redirecting to merchant sample app in..<span id="counter">5</span></p>
+    </div>
+  </div>
+</div>
+  <script>
+    let counter = 5;
+    const counterElement = document.getElementById('counter');
+    const timerElement = document.getElementById('redirectTimer');
+    const redirectButton = document.getElementById('redirectButton');
+    
+    const timer = setInterval(() => {
+      counter--;
+      if (counterElement) {
+        counterElement.textContent = counter;
+      }
+      if (counter <= 0) {
+        clearInterval(timer);
+        window.location.href = '/';
+      }
+    }, 1000);
+    
+    if (redirectButton) {
+      redirectButton.addEventListener('click', () => {
+        clearInterval(timer);
+        window.location.href = '/';
+      });
+    }
+  </script>
+</body>
+</html>
+
