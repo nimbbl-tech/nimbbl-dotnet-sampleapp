@@ -58,7 +58,8 @@ See `.env.example` for a complete template with all available options.
 
 ## Documentation
 
-For detailed integration guide, see [INTEGRATION.md](./INTEGRATION.md)
+- **For local setup and development:** See [LOCAL_SETUP.md](./LOCAL_SETUP.md) for detailed step-by-step instructions
+- **For integration guide:** See [INTEGRATION.md](./INTEGRATION.md) for detailed integration documentation
 
 ## Support
 
