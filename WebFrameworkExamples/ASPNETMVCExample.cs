@@ -3,7 +3,7 @@ using Nimbbl.Sdk.Rest.Api;
 using Nimbbl.Sdk.Rest.Common;
 using System.Text.Json;
 
-namespace MerchantSampleApp.WebFrameworkExamples;
+namespace NimbblDotnetSampleapp.WebFrameworkExamples;
 
 /// <summary>
 /// Example: ASP.NET MVC Controller integration with Nimbbl V3 API
@@ -39,9 +39,8 @@ public class ASPNETMVCExample : Controller
             // Step 3: Create order
             var orderRequest = new Dictionary<string, object?>
             {
-                ["amount"] = 10000,
-                ["total_amount"] = 10000,
-                ["amount_before_tax"] = 10000,
+                ["total_amount"] = 100.0,
+                ["amount_before_tax"] = 100.0,
                 ["tax"] = 0,
                 ["currency"] = "INR",
                 ["merchant_order_id"] = $"order_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}",
@@ -62,9 +61,10 @@ public class ASPNETMVCExample : Controller
                         ["title"] = "Product Name",
                         ["description"] = "Product Description",
                         ["quantity"] = 1,
-                        ["rate"] = 10000,
-                        ["amount"] = 10000,
-                        ["total_amount"] = 10000
+                        ["rate"] = 100.0,
+                        ["total_amount"] = 100.0,
+                        ["amount_before_tax"] = 100.0,
+                        ["tax"] = 0
                     }
                 }
             };

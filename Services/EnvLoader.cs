@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace MerchantSampleApp.Services;
+namespace NimbblDotnetSampleapp.Services;
 
 /// <summary>
 /// Utility for loading environment variables from .env files

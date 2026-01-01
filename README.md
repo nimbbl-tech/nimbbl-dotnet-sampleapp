@@ -5,6 +5,7 @@ Server kit for Nimbbl .NET Integration
 ## Requirements
 
 - Latest [.NET 8.0 SDK](https://dotnet.microsoft.com/download) or later
+- [Nimbbl.Sdk.Rest](https://www.nuget.org/packages/Nimbbl.Sdk.Rest) version 1.3.5-rc2 or later
 
 ## Quick Start
 
@@ -47,6 +48,20 @@ The application will start at `http://localhost:5001` (or the port configured in
 
 - `NIMBBL_ACCESS_KEY` - Your Nimbbl access key (required)
 - `NIMBBL_ACCESS_SECRET` - Your Nimbbl access secret (required)
+
+## SDK Version
+
+This sample app uses **Nimbbl.Sdk.Rest version 1.3.5-rc2**.
+
+To update to the latest version:
+```bash
+dotnet add package Nimbbl.Sdk.Rest
+```
+
+Or update the version in `nimbbl-dotnet-sampleapp.csproj`:
+```xml
+<PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc2" />
+```
 
 ## Documentation
 

@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Nimbbl.Sdk.Rest.Common;
 using Nimbbl.Sdk.Rest.Log;
-using MerchantSampleApp.Services;
+using NimbblDotnetSampleapp.Services;
 using System.Text;
 using System.Text.Json;
 
-namespace MerchantSampleApp.Controllers;
+namespace NimbblDotnetSampleapp.Controllers;
 
 [ApiController]
 [Route("webhook")]
@@ -47,7 +47,7 @@ public class WebhookController : ControllerBase
         }
         catch (Exception ex)
         {
-            Logger.GetInstance().Exception($"Webhook error: {ex.Message}", ex);
+            Logger.GetInstance().ExceptionWithCaller($"Webhook error: {ex.Message}", ex);
             return BadRequest(new { error = "Failed to process webhook." });
         }
     }
@@ -56,7 +56,7 @@ public class WebhookController : ControllerBase
     {
         var eventType = eventData.TryGetProperty("event_type", out var et) ? et.GetString() : "unknown";
         
-        Logger.GetInstance().Info($"Processing webhook event: {eventType}");
+        Logger.GetInstance().InfoWithCaller($"Processing webhook event: {eventType}");
 
         switch (eventType)
         {
@@ -82,44 +82,58 @@ public class WebhookController : ControllerBase
                 HandleRefundCompleted(eventData);
                 break;
             default:
-                Logger.GetInstance().Info($"Unhandled webhook event type: {eventType}");
+                Logger.GetInstance().InfoWithCaller($"Unhandled webhook event type: {eventType}");
                 break;
         }
     }
 
     private void HandleOrderPaid(JsonElement eventData)
     {
-        Logger.GetInstance().Info("Order paid event received");
+        // TODO: Implement order paid business logic
+        // Example: Update order status in database, send confirmation email, etc.
+        Logger.GetInstance().InfoWithCaller("Order paid event received");
     }
 
     private void HandleOrderFailed(JsonElement eventData)
     {
-        Logger.GetInstance().Info("Order failed event received");
+        // TODO: Implement order failed business logic
+        // Example: Update order status, notify customer, etc.
+        Logger.GetInstance().InfoWithCaller("Order failed event received");
     }
 
     private void HandleTransactionCreated(JsonElement eventData)
     {
-        Logger.GetInstance().Info("Transaction created event received");
+        // TODO: Implement transaction created business logic
+        // Example: Log transaction, update order status, etc.
+        Logger.GetInstance().InfoWithCaller("Transaction created event received");
     }
 
     private void HandleTransactionCompleted(JsonElement eventData)
     {
-        Logger.GetInstance().Info("Transaction completed event received");
+        // TODO: Implement transaction completed business logic
+        // Example: Update order status, trigger fulfillment, etc.
+        Logger.GetInstance().InfoWithCaller("Transaction completed event received");
     }
 
     private void HandleTransactionFailed(JsonElement eventData)
     {
-        Logger.GetInstance().Info("Transaction failed event received");
+        // TODO: Implement transaction failed business logic
+        // Example: Update order status, notify customer, etc.
+        Logger.GetInstance().InfoWithCaller("Transaction failed event received");
     }
 
     private void HandleRefundInitiated(JsonElement eventData)
     {
-        Logger.GetInstance().Info("Refund initiated event received");
+        // TODO: Implement refund initiated business logic
+        // Example: Update order status, notify customer, etc.
+        Logger.GetInstance().InfoWithCaller("Refund initiated event received");
     }
 
     private void HandleRefundCompleted(JsonElement eventData)
     {
-        Logger.GetInstance().Info("Refund completed event received");
+        // TODO: Implement refund completed business logic
+        // Example: Update order status, process refund, etc.
+        Logger.GetInstance().InfoWithCaller("Refund completed event received");
     }
 }
 

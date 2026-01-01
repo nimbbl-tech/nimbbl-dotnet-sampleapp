@@ -1,4 +1,4 @@
-namespace MerchantSampleApp.Models;
+namespace NimbblDotnetSampleapp.Models;
 
 public class PaymentFailedViewModel
 {
@@ -7,7 +7,7 @@ public class PaymentFailedViewModel
     public string Message { get; set; } = "Payment failed. Please try again.";
     public string Status { get; set; } = "failed";
     public string Reason { get; set; } = string.Empty;
-    public long? Amount { get; set; }
+    public double? Amount { get; set; }
     public string Currency { get; set; } = string.Empty;
     public string PaymentMode { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;

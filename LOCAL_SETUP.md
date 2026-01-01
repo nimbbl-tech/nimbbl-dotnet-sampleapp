@@ -21,9 +21,9 @@ git clone <repository-url>
 cd nimbbl-dotnet-sampleapp
 ```
 
-Or if you already have the code, navigate to the `MerchantSampleApp` directory:
+Or if you already have the code, navigate to the `nimbbl-dotnet-sampleapp` directory:
 ```bash
-cd MerchantSampleApp
+cd nimbbl-dotnet-sampleapp
 ```
 
 ### Step 2: Install .NET 8.0 SDK
@@ -159,7 +159,33 @@ To access the app from other devices on your network:
 ### Error: "Port 5001 is already in use"
 
 **Solution:** Either:
-- Stop the process using port 5001
+
+**Option 1: Kill the process automatically (Recommended)**
+- **macOS/Linux:** Run `./kill-ports-unix.sh`
+- **Windows (PowerShell):** Run `.\kill-ports-windows.ps1`
+
+**Option 2: Kill manually using commands**
+- **macOS/Linux:**
+  ```bash
+  # Kill process on port 5001
+  lsof -ti:5001 | xargs kill -9
+  
+  # Kill process on port 5000
+  lsof -ti:5000 | xargs kill -9
+  
+  # Or kill both at once
+  lsof -ti:5000,5001 | xargs kill -9
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  # Kill process on port 5001
+  Get-NetTCPConnection -LocalPort 5001 | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
+  
+  # Kill process on port 5000
+  Get-NetTCPConnection -LocalPort 5000 | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
+  ```
+
+**Option 3: Change the port**
 - Change the port in `launchSettings.json`
 - Set `ASPNETCORE_URLS` environment variable to a different port
 
@@ -218,7 +244,7 @@ The application logs are output to the console. For more detailed logging:
 ## Project Structure
 
 ```
-MerchantSampleApp/
+nimbbl-dotnet-sampleapp/
 ├── Controllers/          # MVC Controllers
 │   └── HomeController.cs
 ├── Models/              # View Models

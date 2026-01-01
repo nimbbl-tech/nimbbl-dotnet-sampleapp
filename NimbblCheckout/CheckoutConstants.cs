@@ -1,4 +1,4 @@
-namespace MerchantSampleApp.NimbblCheckout;
+namespace NimbblDotnetSampleapp.NimbblCheckout;
 
 /// <summary>
 /// Constants for Nimbbl Checkout configuration

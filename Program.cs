@@ -1,7 +1,10 @@
 ﻿using Nimbbl.Sdk.Rest.Api;
 using Nimbbl.Sdk.Rest.Common;
 using Nimbbl.Sdk.Rest.Extensions;
-using MerchantSampleApp.Services;
+using NimbblDotnetSampleapp.Services;
+
+// Load environment variables from .env file if it exists
+EnvLoader.LoadEnvFile();
 
 var builder = WebApplication.CreateBuilder(args);
 

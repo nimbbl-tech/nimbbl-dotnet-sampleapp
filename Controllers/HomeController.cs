@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Nimbbl.Sdk.Rest.Api;
 using Nimbbl.Sdk.Rest.Common;
 using Nimbbl.Sdk.Rest.Log;
-using MerchantSampleApp.Models;
-using MerchantSampleApp.NimbblCheckout;
-using MerchantSampleApp.Services;
-using CheckoutConstants = MerchantSampleApp.NimbblCheckout.CheckoutConstants;
+using NimbblDotnetSampleapp.Models;
+using NimbblDotnetSampleapp.NimbblCheckout;
+using NimbblDotnetSampleapp.Services;
+using CheckoutConstants = NimbblDotnetSampleapp.NimbblCheckout.CheckoutConstants;
 using System.Text.Json;
 
-namespace MerchantSampleApp.Controllers;
+namespace NimbblDotnetSampleapp.Controllers;
 
 [IgnoreAntiforgeryToken]
 public class HomeController : Controller
@@ -61,7 +63,7 @@ public class HomeController : Controller
         catch (Exception ex)
         {
             model.Error = ex.Message;
-            Logger.GetInstance().Error($"Order creation error: {ex.Message}");
+            Logger.GetInstance().ErrorWithCaller($"Order creation error: {ex.Message}");
         }
         
         return View(model);
@@ -116,7 +118,7 @@ public class HomeController : Controller
         var merchantToken = await GetMerchantTokenAsync();
         _api.SetBearerToken(merchantToken);
 
-        var totalAmount = (int)(model.Amount * 100);
+        var totalAmount = (double)model.Amount;
         var orderRequest = BuildOrderRequest(model, totalAmount);
         
         var order = await _api.Orders().CreateOrderAsync(orderRequest);
@@ -136,7 +138,7 @@ public class HomeController : Controller
         return token!;
     }
 
-    private Dictionary<string, object?> BuildOrderRequest(IndexViewModel model, int totalAmount)
+    private Dictionary<string, object?> BuildOrderRequest(IndexViewModel model, double totalAmount)
     {
         var userFirstName = model.PrefillUser && !string.IsNullOrWhiteSpace(model.Name) ? model.Name : "John";
         var userEmail = model.PrefillUser && !string.IsNullOrWhiteSpace(model.Email) ? model.Email : "customer@example.com";
@@ -144,7 +146,6 @@ public class HomeController : Controller
 
         var orderRequest = new Dictionary<string, object?>
         {
-            ["amount"] = totalAmount,
             ["total_amount"] = totalAmount,
             ["amount_before_tax"] = totalAmount,
             ["tax"] = 0,
@@ -170,7 +171,6 @@ public class HomeController : Controller
                     ["description"] = "Demo product for testing",
                     ["quantity"] = 1,
                     ["rate"] = totalAmount,
-                    ["amount"] = totalAmount,
                     ["total_amount"] = totalAmount,
                     ["amount_before_tax"] = totalAmount,
                     ["tax"] = 0
@@ -180,7 +180,13 @@ public class HomeController : Controller
 
         if (model.Mode == "redirect")
         {
-            orderRequest["callback_url"] = $"{Request.Scheme}://{Request.Host.Value}/payment-callback";
+            var callbackUrl = $"{Request.Scheme}://{Request.Host.Value}/payment-callback";
+            var hostEnvironment = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+            if (hostEnvironment.IsProduction() && callbackUrl.Contains("localhost"))
+            {
+                throw new InvalidOperationException("callback_url cannot be localhost in production");
+            }
+            orderRequest["callback_url"] = callbackUrl;
         }
 
         return orderRequest;
@@ -247,7 +253,7 @@ public class HomeController : Controller
 
         if (model.Amount.HasValue && !string.IsNullOrEmpty(model.Currency))
         {
-            var amountInCurrency = (decimal)model.Amount.Value / 100;
+            var amountInCurrency = (decimal)model.Amount.Value;
             model.FormattedAmount = amountInCurrency.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
         }
 
@@ -284,7 +290,7 @@ public class HomeController : Controller
 
         if (model.Amount.HasValue && !string.IsNullOrEmpty(model.Currency))
         {
-            var amountInCurrency = (decimal)model.Amount.Value / 100;
+            var amountInCurrency = (decimal)model.Amount.Value;
             model.FormattedAmount = amountInCurrency.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
         }
 
@@ -334,7 +340,7 @@ public class HomeController : Controller
         }
         catch (Exception ex)
         {
-            Logger.GetInstance().Exception($"Payment callback error: {ex.Message}", ex);
+            Logger.GetInstance().ExceptionWithCaller($"Payment callback error: {ex.Message}", ex);
             return RedirectToAction("PaymentFailed", new { error = "1" });
         }
     }

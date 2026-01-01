@@ -15,7 +15,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "MerchantSampleApp": {
+    "NimbblDotnetSampleapp": {
       "commandName": "Project",
       "launchBrowser": false,
       "applicationUrl": "http://0.0.0.0:5001",

@@ -45,11 +45,11 @@ Install-Package Nimbbl.Sdk.Rest
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc1" />
+  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc2" />
 </ItemGroup>
 ```
 
-**Note:** Replace `1.3.5-rc1` with the latest version available on [NuGet](https://www.nuget.org/packages/Nimbbl.Sdk.Rest). You can also omit the version to use the latest available version.
+**Note:** Replace `1.3.5-rc2` with the latest version available on [NuGet](https://www.nuget.org/packages/Nimbbl.Sdk.Rest). You can also omit the version to use the latest available version.
 
 **Using Package Manager UI:**
 
@@ -109,7 +109,7 @@ NIMBBL_ACCESS_SECRET=your_access_secret
 
 ```csharp
 using Nimbbl.Sdk.Rest.Extensions;
-using MerchantSampleApp.Services;
+using NimbblDotnetSampleapp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -166,8 +166,8 @@ public class HomeController : Controller
 ```csharp
 var orderRequest = new Dictionary<string, object?>
 {
-    ["total_amount"] = 10000.0,
-    ["amount_before_tax"] = 10000.0,
+    ["total_amount"] = 100.0,
+    ["amount_before_tax"] = 100.0,
     ["tax"] = 0,
     ["currency"] = "INR",
     ["merchant_order_id"] = $"order_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}",
@@ -187,8 +187,10 @@ var orderRequest = new Dictionary<string, object?>
             ["title"] = "Product Name",
             ["description"] = "Product Description",
             ["quantity"] = 1,
-            ["rate"] = 10000.0,
-            ["total_amount"] = 10000.0
+            ["rate"] = 100.0,
+            ["total_amount"] = 100.0,
+            ["amount_before_tax"] = 100.0,
+            ["tax"] = 0
         }
     }
 };
@@ -226,7 +228,7 @@ The `CheckoutScriptBuilder` class simplifies checkout script generation for both
 **Popup Mode:**
 
 ```csharp
-using MerchantSampleApp.NimbblCheckout;
+using NimbblDotnetSampleapp.NimbblCheckout;
 
 public class HomeController : Controller
 {
@@ -268,7 +270,7 @@ For more control, use `CheckoutClient` directly:
 **Popup Mode:**
 
 ```csharp
-using MerchantSampleApp.NimbblCheckout;
+using NimbblDotnetSampleapp.NimbblCheckout;
 
 var checkoutClient = new CheckoutClient();
 var launchOptions = new CheckoutLaunchOptions
@@ -349,7 +351,7 @@ public class CheckoutLaunchOptions
 Use constants from `CheckoutConstants` for consistent values:
 
 ```csharp
-using static MerchantSampleApp.NimbblCheckout.CheckoutConstants;
+using static NimbblDotnetSampleapp.NimbblCheckout.CheckoutConstants;
 
 // Payment modes
 var mode = PaymentModeNetBanking;  // "net_banking"
@@ -377,7 +379,7 @@ The `PaymentResponseParser` class handles parsing and decrypting payment respons
 In redirect mode, Nimbbl redirects the user back to your `callback_url` with a `response` query parameter containing the payment result.
 
 ```csharp
-using MerchantSampleApp.NimbblCheckout;
+using NimbblDotnetSampleapp.NimbblCheckout;
 
 [Route("payment-callback")]
 [HttpGet]
@@ -670,7 +672,7 @@ Contains constants for checkout configuration to avoid magic strings.
 **Example:**
 
 ```csharp
-using static MerchantSampleApp.NimbblCheckout.CheckoutConstants;
+using static NimbblDotnetSampleapp.NimbblCheckout.CheckoutConstants;
 
 if (status == PaymentStatusSuccess) {
     // Handle success

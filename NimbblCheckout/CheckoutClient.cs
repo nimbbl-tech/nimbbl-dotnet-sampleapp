@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using MerchantSampleApp.Services;
+using NimbblDotnetSampleapp.Services;
 
-namespace MerchantSampleApp.NimbblCheckout;
+namespace NimbblDotnetSampleapp.NimbblCheckout;
 
 /// <summary>
 /// Options for simplified checkout launch

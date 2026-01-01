@@ -2,11 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using Nimbbl.Sdk.Rest.Api;
 using Nimbbl.Sdk.Rest.Common;
 using Nimbbl.Sdk.Rest.Log;
-using MerchantSampleApp.Services;
+using NimbblDotnetSampleapp.Services;
 using System.Text;
 using System.Text.Json;
 
-namespace MerchantSampleApp.Controllers;
+namespace NimbblDotnetSampleapp.Controllers;
 
 /// <summary>
 /// API endpoints for checkout response decryption and transaction enquiry
@@ -93,7 +93,7 @@ public class ApiController : ControllerBase
         }
         catch (Exception ex)
         {
-            Logger.GetInstance().Exception($"Checkout response error: {ex.Message}", ex);
+            Logger.GetInstance().ExceptionWithCaller($"Checkout response error: {ex.Message}", ex);
             return StatusCode(500, new { error = "Failed to process checkout response." });
         }
     }
@@ -137,7 +137,7 @@ public class ApiController : ControllerBase
         }
         catch (Exception ex)
         {
-            Logger.GetInstance().Exception($"Transaction enquiry error: {ex.Message}", ex);
+            Logger.GetInstance().ExceptionWithCaller($"Transaction enquiry error: {ex.Message}", ex);
             return StatusCode(500, new { error = "Failed to perform transaction enquiry." });
         }
     }

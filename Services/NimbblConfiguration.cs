@@ -1,4 +1,4 @@
-namespace MerchantSampleApp.Services;
+namespace NimbblDotnetSampleapp.Services;
 
 /// <summary>
 /// Centralized configuration service for accessing environment variables

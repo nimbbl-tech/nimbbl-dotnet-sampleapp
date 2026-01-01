@@ -3,9 +3,9 @@ using System.Text;
 using System.Text.Json;
 using Nimbbl.Sdk.Rest.Common;
 using Nimbbl.Sdk.Rest.Log;
-using MerchantSampleApp.Services;
+using NimbblDotnetSampleapp.Services;
 
-namespace MerchantSampleApp.NimbblCheckout;
+namespace NimbblDotnetSampleapp.NimbblCheckout;
 
 /// <summary>
 /// Service for parsing and decrypting payment responses from Nimbbl checkout
@@ -28,7 +28,7 @@ public static class PaymentResponseParser
         }
         catch (Exception ex)
         {
-            Logger.GetInstance().Exception($"Failed to decode base64 response: {ex.Message}", ex);
+            Logger.GetInstance().ExceptionWithCaller($"Failed to decode base64 response: {ex.Message}", ex);
             return null;
         }
     }
@@ -94,7 +94,7 @@ public static class PaymentResponseParser
             parsed.Reason = TryGetString(payload, "reason") ?? TryGetString(root, "reason") ?? string.Empty;
 
             // Extract amount and currency
-            parsed.Amount = TryGetLong(payload, "amount") ?? TryGetLong(root, "amount");
+            parsed.Amount = TryGetDouble(payload, "amount") ?? TryGetDouble(root, "amount");
             parsed.Currency = TryGetString(payload, "currency") ?? TryGetString(root, "currency") ?? string.Empty;
 
             // Extract payment mode
@@ -128,7 +128,7 @@ public static class PaymentResponseParser
         }
         catch (Exception ex)
         {
-            Logger.GetInstance().Exception($"Failed to parse payment response: {ex.Message}", ex);
+            Logger.GetInstance().ExceptionWithCaller($"Failed to parse payment response: {ex.Message}", ex);
             return null;
         }
     }
@@ -140,13 +140,13 @@ public static class PaymentResponseParser
         return null;
     }
 
-    private static long? TryGetLong(JsonElement element, string propertyName)
+    private static double? TryGetDouble(JsonElement element, string propertyName)
     {
         if (element.TryGetProperty(propertyName, out var prop))
         {
             if (prop.ValueKind == JsonValueKind.Number)
-                return prop.GetInt64();
-            if (prop.ValueKind == JsonValueKind.String && long.TryParse(prop.GetString(), out var result))
+                return prop.GetDouble();
+            if (prop.ValueKind == JsonValueKind.String && double.TryParse(prop.GetString(), out var result))
                 return result;
         }
         return null;
@@ -163,7 +163,7 @@ public class ParsedResponse
     public string Status { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public string Reason { get; set; } = string.Empty;
-    public long? Amount { get; set; }
+    public double? Amount { get; set; }
     public string Currency { get; set; } = string.Empty;
     public string PaymentMode { get; set; } = string.Empty;
     public string? UserName { get; set; }

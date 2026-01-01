@@ -1,4 +1,4 @@
-namespace MerchantSampleApp.Models;
+namespace NimbblDotnetSampleapp.Models;
 
 public class IndexViewModel
 {

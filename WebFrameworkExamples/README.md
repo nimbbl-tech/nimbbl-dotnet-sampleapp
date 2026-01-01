@@ -18,5 +18,5 @@ This directory contains example implementations for integrating Nimbbl V3 API wi
 
 ## Usage
 
-These examples show the basic integration pattern. For a complete working sample, see the main `MerchantSampleApp` project.
+These examples show the basic integration pattern. For a complete working sample, see the main `nimbbl-dotnet-sampleapp` project.
 

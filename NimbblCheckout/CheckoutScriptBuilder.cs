@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using MerchantSampleApp.Models;
+using NimbblDotnetSampleapp.Models;
 
-namespace MerchantSampleApp.NimbblCheckout;
+namespace NimbblDotnetSampleapp.NimbblCheckout;
 
 /// <summary>
 /// Helper class for building checkout scripts and callback handlers

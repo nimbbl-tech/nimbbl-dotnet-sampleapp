@@ -1,4 +1,4 @@
-namespace MerchantSampleApp.Models;
+namespace NimbblDotnetSampleapp.Models;
 
 public class PaymentSuccessViewModel
 {
@@ -6,7 +6,7 @@ public class PaymentSuccessViewModel
     public string TransactionId { get; set; } = string.Empty;
     public string Message { get; set; } = "Payment successful!";
     public bool SignatureValid { get; set; }
-    public long? Amount { get; set; }
+    public double? Amount { get; set; }
     public string Currency { get; set; } = string.Empty;
     public string PaymentMode { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;
