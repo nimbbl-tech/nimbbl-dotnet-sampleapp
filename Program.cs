@@ -1,24 +1,67 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+﻿using Nimbbl.Sdk.Rest.Api;
+using Nimbbl.Sdk.Rest.Common;
+using Nimbbl.Sdk.Rest.Extensions;
+using MerchantSampleApp.Services;
 
-namespace SampleAspNetCore
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddSession(options =>
 {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            CreateWebHostBuilder(args).Build().Run();
-        }
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>();
-    }
+var accessKey = Environment.GetEnvironmentVariable("NIMBBL_ACCESS_KEY") 
+    ?? throw new InvalidOperationException(ErrorMessages.AccessKeyRequired);
+var accessSecret = Environment.GetEnvironmentVariable("NIMBBL_ACCESS_SECRET") 
+    ?? throw new InvalidOperationException(ErrorMessages.AccessSecretRequiredEnv);
+
+// Only read optional parameters in development mode
+var isDevelopment = builder.Environment.IsDevelopment();
+string? apiHost = null;
+bool? enableLogging = null;
+bool? debugLogging = null;
+string? logFilePath = null;
+
+if (isDevelopment)
+{
+    apiHost = Environment.GetEnvironmentVariable("NIMBBL_API_HOST");
+    if (bool.TryParse(Environment.GetEnvironmentVariable("NIMBBL_ENABLE_LOGGING"), out var enableLog))
+        enableLogging = enableLog;
+    if (bool.TryParse(Environment.GetEnvironmentVariable("NIMBBL_DEBUG_LOGGING"), out var debugLog))
+        debugLogging = debugLog;
+    logFilePath = Environment.GetEnvironmentVariable("NIMBBL_LOG_FILE");
 }
+
+builder.Services.AddNimbbl(
+    accessKey: accessKey,
+    accessSecret: accessSecret,
+    apiHost: apiHost,
+    enableLogging: enableLogging,
+    debugLogging: debugLogging,
+    logFilePath: logFilePath);
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+}
+
+app.UseStaticFiles();
+
+app.UseSession();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapControllers();
+
+app.Run();
