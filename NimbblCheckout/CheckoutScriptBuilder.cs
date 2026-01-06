@@ -57,67 +57,82 @@ public class CheckoutScriptBuilder
         var baseUrl = string.IsNullOrWhiteSpace(callbackBaseUrl) 
             ? $"{_request.Scheme}://{_request.Host.Value}" 
             : callbackBaseUrl.TrimEnd('/');
-        var apiEndpoint = $"{baseUrl}/api/checkout-response";
+        // Option B: use /payment-callback for both redirect (GET) and popup (POST)
+        var apiEndpoint = $"{baseUrl}/payment-callback";
         var successUrl = $"{baseUrl}{_urlHelper.Action("PaymentSuccess", "Home")}";
         var failedUrl = $"{baseUrl}{_urlHelper.Action("PaymentFailed", "Home")}";
 
         return $@"async function(response) {{
   try {{
-    console.log('Popup callback received:', response);
-    
+    if (window.__nimbbl_callback_handled) {{
+      return;
+    }}
+    if (window.__nimbbl_callback_processing) {{
+      return;
+    }}
+    window.__nimbbl_callback_processing = true;
     if (!response) {{
-      console.error('Empty response received');
       window.location.href = '{failedUrl}?error=1';
       return;
     }}
     
     let decodedResponse = response;
-    
-    if (response && response.encrypted_response) {{
-      try {{
-        const res = await fetch('{apiEndpoint}', {{
-          method: 'POST',
-          headers: {{ 'Content-Type': 'application/json' }},
-          body: JSON.stringify(response)
-        }});
-        
-        if (!res.ok) {{
-          throw new Error('Decryption request failed: ' + res.status);
-        }}
-        
-        const data = await res.json();
-        
-        if (data.parsed) {{
-          decodedResponse = data.parsed;
-        }} else if (data.decrypted) {{
-          decodedResponse = JSON.parse(data.decrypted);
-          if (!decodedResponse.payload && decodedResponse.status) {{
-            decodedResponse = {{ payload: decodedResponse }};
-          }}
-        }} else if (data.error) {{
-          console.error('Decryption error:', data.error);
-          window.location.href = '{failedUrl}?error=1';
-          return;
-        }}
-      }} catch (e) {{
-        console.error('Failed to decrypt response', e);
+    const encryptedResponse = response?.payload?.encrypted_response;
+    try {{
+      const res = await fetch('{apiEndpoint}', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{
+          encrypted_response: encryptedResponse || null,
+          callback: response
+        }})
+      }});
+
+      if (!res.ok) {{
+        throw new Error('CheckoutResponse request failed: ' + res.status);
+      }}
+
+      const data = await res.json();
+      if (data.parsed) {{
+        decodedResponse = data.parsed;
+      }} else {{
         window.location.href = '{failedUrl}?error=1';
         return;
       }}
+    }} catch (e) {{
+      window.location.href = '{failedUrl}?error=1';
+      return;
     }}
     
+    // If another callback already redirected while we were awaiting the server, stop here.
+    if (window.__nimbbl_callback_handled) {{
+      return;
+    }}
+
     if (!decodedResponse.payload) {{
       if (decodedResponse.status) {{
         decodedResponse = {{ payload: decodedResponse }};
       }} else {{
-        console.error('Invalid response format: missing payload');
         window.location.href = '{failedUrl}?error=1';
         return;
       }}
     }}
     
     const payload = decodedResponse.payload || decodedResponse;
-    const status = payload.status || decodedResponse.status || 'failed';
+    
+    // Extract status - check nested transaction and order status as well
+    let status = payload.status || decodedResponse.status;
+    if (!status && payload.transaction && payload.transaction.status) {{
+      status = payload.transaction.status;
+    }}
+    if (!status && payload.order && payload.order.status) {{
+      status = payload.order.status;
+    }}
+    // Default to 'failed' only if no status found at all
+    if (!status) {{
+      status = 'failed';
+    }}
+    
     const orderId = payload.nimbbl_order_id || payload.order_id || '';
     const transactionId = payload.nimbbl_transaction_id || payload.transaction_id || '';
     const message = payload.message || '';
@@ -125,14 +140,14 @@ public class CheckoutScriptBuilder
     const responseJson = JSON.stringify(decodedResponse);
     const encodedResponse = btoa(responseJson);
     
-    if (status === 'success' || status === 'succeeded') {{
-      console.log('Payment successful, redirecting to success page. Order ID:', orderId);
+    if (status === 'success' || status === 'succeeded' || status === 'completed') {{
+      window.__nimbbl_callback_handled = true;
       window.location.href = '{successUrl}?response=' + encodeURIComponent(encodedResponse) +
         (orderId ? '&order_id=' + encodeURIComponent(orderId) : '') +
         (transactionId ? '&transaction_id=' + encodeURIComponent(transactionId) : '') +
         (message ? '&message=' + encodeURIComponent(message) : '');
     }} else {{
-      console.log('Payment failed or unknown status, redirecting to failed page. Status:', status);
+      window.__nimbbl_callback_handled = true;
       window.location.href = '{failedUrl}?response=' + encodeURIComponent(encodedResponse) +
         (orderId ? '&order_id=' + encodeURIComponent(orderId) : '') +
         (transactionId ? '&transaction_id=' + encodeURIComponent(transactionId) : '') +
@@ -140,9 +155,12 @@ public class CheckoutScriptBuilder
         '&status=' + encodeURIComponent(status || 'failed');
     }}
   }} catch (e) {{
-    console.error('Failed to handle callback', e);
-    console.error('Error details:', e.message, e.stack);
     window.location.href = '{failedUrl}?error=1';
+  }} finally {{
+    // If we didn't redirect, allow subsequent events to try.
+    if (!window.__nimbbl_callback_handled) {{
+      window.__nimbbl_callback_processing = false;
+    }}
   }}
 }}";
     }

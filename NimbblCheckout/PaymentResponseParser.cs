@@ -12,6 +12,7 @@ namespace NimbblDotnetSampleapp.NimbblCheckout;
 /// </summary>
 public static class PaymentResponseParser
 {
+    private const string SignatureNotPresentMessage = "Signature not present; skipped verification";
     /// <summary>
     /// Parse a base64-encoded response string from payment callback
     /// </summary>
@@ -47,19 +48,6 @@ public static class PaymentResponseParser
             var root = doc.RootElement;
 
             // Handle encrypted response
-            if (root.TryGetProperty("encrypted_response", out var encryptedProp) && encryptedProp.ValueKind == JsonValueKind.String)
-            {
-                var encryptedResponse = encryptedProp.GetString();
-                if (!string.IsNullOrWhiteSpace(encryptedResponse))
-                {
-                    var accessSecret = NimbblConfiguration.Instance.AccessSecret;
-                    var enc = new Encryption(accessSecret);
-                    var decrypted = enc.Decrypt(encryptedResponse!, true);
-                    using var decryptedDoc = JsonDocument.Parse(decrypted);
-                    root = decryptedDoc.RootElement;
-                }
-            }
-
             // Extract payload
             JsonElement payload;
             if (root.TryGetProperty("payload", out var payloadProp))
@@ -72,6 +60,40 @@ public static class PaymentResponseParser
             }
 
             var parsed = new ParsedResponse();
+            var logger = Logger.GetInstance();
+
+            // Decrypt if encrypted_response is present either at root or inside payload
+            try
+            {
+                string? encryptedResponse = null;
+                if (root.TryGetProperty("encrypted_response", out var encryptedProp) && encryptedProp.ValueKind == JsonValueKind.String)
+                    encryptedResponse = encryptedProp.GetString();
+                else if (payload.ValueKind == JsonValueKind.Object
+                         && payload.TryGetProperty("encrypted_response", out var payloadEncProp)
+                         && payloadEncProp.ValueKind == JsonValueKind.String)
+                    encryptedResponse = payloadEncProp.GetString();
+
+                if (!string.IsNullOrWhiteSpace(encryptedResponse))
+                {
+                    var accessSecret = NimbblConfiguration.Instance.AccessSecret;
+                    var enc = new Encryption(accessSecret);
+                    var decryptedJson = enc.Decrypt(encryptedResponse!, true);
+                    using var decryptedDoc = JsonDocument.Parse(decryptedJson);
+                    // Important: clone so JsonElement isn't tied to disposed JsonDocument
+                    root = decryptedDoc.RootElement.Clone();
+
+                    // Re-bind payload after decryption
+                    if (root.TryGetProperty("payload", out var decryptedPayloadProp))
+                        payload = decryptedPayloadProp;
+                    else
+                        payload = root;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.ExceptionWithCaller($"PaymentResponseParser - Decryption failed: {ex.Message}", ex);
+                // Continue without decrypting; status may remain unknown
+            }
 
             // Extract order and transaction IDs
             parsed.OrderId = TryGetString(payload, "nimbbl_order_id") 
@@ -84,8 +106,21 @@ public static class PaymentResponseParser
                 ?? TryGetString(root, "nimbbl_transaction_id")
                 ?? TryGetString(root, "transaction_id");
 
-            // Extract status
-            parsed.Status = TryGetString(payload, "status") ?? TryGetString(root, "status") ?? "unknown";
+            // Extract status - check nested transaction and order status as well
+            var payloadStatus = TryGetString(payload, "status");
+            var transactionStatus = payload.TryGetProperty("transaction", out var txnProp) && txnProp.ValueKind == JsonValueKind.Object 
+                ? TryGetString(txnProp, "status") 
+                : null;
+            var orderStatus = payload.TryGetProperty("order", out var orderProp) && orderProp.ValueKind == JsonValueKind.Object 
+                ? TryGetString(orderProp, "status") 
+                : null;
+            var rootStatus = TryGetString(root, "status");
+            
+            parsed.Status = payloadStatus 
+                ?? transactionStatus
+                ?? orderStatus
+                ?? rootStatus
+                ?? "unknown";
 
             // Extract message
             parsed.Message = TryGetString(payload, "message") ?? TryGetString(root, "message") ?? string.Empty;
@@ -110,17 +145,36 @@ public static class PaymentResponseParser
             // Verify signature if requested
             if (verifySignature)
             {
+                var accessSecret = NimbblConfiguration.Instance.AccessSecret;
+                // Redirect / checkout payloads typically include "transaction" and "order" at the payload level.
+                // Webhook payloads use "attributes". Support both.
                 if (root.TryGetProperty("attributes", out var attributesProp) && attributesProp.ValueKind == JsonValueKind.Object)
                 {
-                    var accessSecret = NimbblConfiguration.Instance.AccessSecret;
-                    var verificationResult = Util.VerifySignature(attributesProp, accessSecret);
-                    parsed.SignatureValid = verificationResult.Success;
-                    parsed.SignatureMessage = verificationResult.Message;
+                    if (!HasAnySignature(attributesProp))
+                    {
+                        parsed.SignatureValid = false;
+                        parsed.SignatureMessage = SignatureNotPresentMessage;
+                    }
+                    else
+                    {
+                        var verificationResult = Util.VerifySignature(attributesProp, accessSecret);
+                        parsed.SignatureValid = verificationResult.Success;
+                        parsed.SignatureMessage = verificationResult.Message;
+                    }
                 }
                 else
                 {
-                    parsed.SignatureValid = false;
-                    parsed.SignatureMessage = "No attributes found for signature verification";
+                    if (!HasAnySignature(payload))
+                    {
+                        parsed.SignatureValid = false;
+                        parsed.SignatureMessage = SignatureNotPresentMessage;
+                    }
+                    else
+                    {
+                        var verificationResult = Util.VerifySignature(payload, accessSecret);
+                        parsed.SignatureValid = verificationResult.Success;
+                        parsed.SignatureMessage = verificationResult.Message;
+                    }
                 }
             }
 
@@ -150,6 +204,30 @@ public static class PaymentResponseParser
                 return result;
         }
         return null;
+    }
+
+    private static bool HasAnySignature(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return false;
+
+        // Common direct fields
+        if (!string.IsNullOrWhiteSpace(TryGetString(element, "nimbbl_signature"))) return true;
+        if (!string.IsNullOrWhiteSpace(TryGetString(element, "signature"))) return true;
+
+        // Nested transaction fields
+        if (element.TryGetProperty("transaction", out var txn) && txn.ValueKind == JsonValueKind.Object)
+        {
+            if (!string.IsNullOrWhiteSpace(TryGetString(txn, "nimbbl_signature"))) return true;
+            if (!string.IsNullOrWhiteSpace(TryGetString(txn, "signature"))) return true;
+        }
+
+        // Nested order fields
+        if (element.TryGetProperty("order", out var order) && order.ValueKind == JsonValueKind.Object)
+        {
+            if (!string.IsNullOrWhiteSpace(TryGetString(order, "nimbbl_signature"))) return true;
+        }
+
+        return false;
     }
 }
 

@@ -45,11 +45,11 @@ Install-Package Nimbbl.Sdk.Rest
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc2" />
+  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc3" />
 </ItemGroup>
 ```
 
-**Note:** Replace `1.3.5-rc2` with the latest version available on [NuGet](https://www.nuget.org/packages/Nimbbl.Sdk.Rest). You can also omit the version to use the latest available version.
+**Note:** Replace `1.3.5-rc3` with the latest version available on [NuGet](https://www.nuget.org/packages/Nimbbl.Sdk.Rest). You can also omit the version to use the latest available version.
 
 **Using Package Manager UI:**
 
@@ -518,7 +518,7 @@ In popup mode, the payment happens in a popup window, and the callback handler i
 
 The `CheckoutScriptBuilder` automatically creates a callback handler that:
 
-1. Handles encrypted responses (decrypts via `/api/checkout-response` endpoint)
+1. Handles encrypted responses (decrypts via `POST /payment-callback`)
 2. Extracts payment data
 3. Redirects to success/failure pages
 
@@ -527,7 +527,7 @@ The `CheckoutScriptBuilder` automatically creates a callback handler that:
 The `CheckoutScriptBuilder` automatically generates a callback handler that:
 
 - Detects encrypted responses
-- Calls `/api/checkout-response` to decrypt if needed
+- Calls `POST /payment-callback` to decrypt/parse (and verify signature) if needed
 - Extracts payment status, order ID, transaction ID
 - Redirects to `PaymentSuccess` or `PaymentFailed` pages with response data
 
@@ -543,14 +543,18 @@ var launchOptions = new CheckoutLaunchOptions
     CallbackHandler = @"async function(response) {
         try {
             // Handle encrypted response
-            if (response && response.encrypted_response) {
-                const res = await fetch('/api/checkout-response', {
+            const encryptedResponse = response?.payload?.encrypted_response;
+            if (encryptedResponse) {
+                const res = await fetch('/payment-callback', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(response)
+                    body: JSON.stringify({
+                        encrypted_response: encryptedResponse,
+                        callback: response
+                    })
                 });
                 const data = await res.json();
-                response = data.decrypted ? JSON.parse(data.decrypted) : response;
+                response = data.parsed ? data.parsed : response;
             }
             
             // Extract payment data
@@ -579,8 +583,8 @@ var launchOptions = new CheckoutLaunchOptions
 | **User Experience** | Payment in popup window | Full page redirect |
 | **Callback Handler** | JavaScript function | Server-side action |
 | **Callback URL** | Not required in order | Required in order (`callback_url`) |
-| **Response Handling** | Client-side JavaScript | Server-side C# |
-| **Encryption** | Handled in JavaScript | Handled in C# |
+| **Response Handling** | Client-side JavaScript + server parse (`POST /payment-callback`) | Server-side C# (`GET /payment-callback`) |
+| **Encryption** | Decrypted server-side (if present) | Decrypted server-side (if present) |
 | **Best For** | Seamless UX, stay on page | Simple integration, full control |
 
 ## NimbblCheckout Folder Structure
@@ -917,14 +921,18 @@ const options = {{}};
 options.callback_handler = async function(response) {{
     try {{
         // Handle encrypted response if present
-        if (response && response.encrypted_response) {{
-            const res = await fetch('{callbackBaseUrl}/api/checkout-response', {{
+        const encryptedResponse = response?.payload?.encrypted_response;
+        if (encryptedResponse) {{
+            const res = await fetch('{callbackBaseUrl}/payment-callback', {{
                 method: 'POST',
                 headers: {{ 'Content-Type': 'application/json' }},
-                body: JSON.stringify(response)
+                body: JSON.stringify({{
+                    encrypted_response: encryptedResponse,
+                    callback: response
+                }})
             }});
             const data = await res.json();
-            response = data.decrypted ? JSON.parse(data.decrypted) : response;
+            response = data.parsed ? data.parsed : response;
         }}
         
         // Extract payment data

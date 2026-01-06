@@ -1,6 +1,6 @@
-﻿using Nimbbl.Sdk.Rest.Api;
-using Nimbbl.Sdk.Rest.Common;
+﻿using Nimbbl.Sdk.Rest.Common;
 using Nimbbl.Sdk.Rest.Extensions;
+using Nimbbl.Sdk.Rest.Log;
 using NimbblDotnetSampleapp.Services;
 
 // Load environment variables from .env file if it exists
@@ -27,6 +27,7 @@ string? apiHost = null;
 bool? enableLogging = null;
 bool? debugLogging = null;
 string? logFilePath = null;
+bool encryptPayload = false;
 
 if (isDevelopment)
 {
@@ -36,15 +37,28 @@ if (isDevelopment)
     if (bool.TryParse(Environment.GetEnvironmentVariable("NIMBBL_DEBUG_LOGGING"), out var debugLog))
         debugLogging = debugLog;
     logFilePath = Environment.GetEnvironmentVariable("NIMBBL_LOG_FILE");
+
+    // Use SDK logging utils to resolve the actual dated log file path.
+    // Example: logs/nimbbl_debug.log -> logs/nimbbl_debug_ddMMyyyy.log
+    logFilePath = Logger.ResolveLogFilePath(logFilePath);
 }
 
+// Read encryption flags (available in all environments)
+if (bool.TryParse(Environment.GetEnvironmentVariable("ENCRYPT_PAYLOAD"), out var encryptPay))
+    encryptPayload = encryptPay;
+
+// Register NimbblApi via DI extension
 builder.Services.AddNimbbl(
     accessKey: accessKey,
     accessSecret: accessSecret,
     apiHost: apiHost,
     enableLogging: enableLogging,
     debugLogging: debugLogging,
-    logFilePath: logFilePath);
+    logFilePath: logFilePath,
+    encryptPayload: encryptPayload);
+
+// Register NimbblConfiguration as singleton for dependency injection
+builder.Services.AddSingleton(NimbblConfiguration.Instance);
 
 var app = builder.Build();
 

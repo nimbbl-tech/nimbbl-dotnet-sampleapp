@@ -39,7 +39,7 @@ You should see `8.0.x` or higher. If not, download and install from [dotnet.micr
 
 1. **Copy the example environment file:**
    ```bash
-   cp .env.example .env
+   cp env.example .env
    ```
 
 2. **Edit the `.env` file** and add your Nimbbl credentials:
@@ -210,7 +210,7 @@ To access the app from other devices on your network:
 1. Check browser console for JavaScript errors (F12 → Console)
 2. Ensure you're not blocking popups in your browser
 3. Verify the order was created successfully (check server logs)
-4. Check that `NIMBBL_CHECKOUT_HOST` is correct if using development environment
+4. Check that `NIMBBL_API_HOST` is correct if using development environment
 
 ## Development Tips
 
@@ -261,7 +261,7 @@ nimbbl-dotnet-sampleapp/
 │   ├── NimbblConfiguration.cs
 │   └── EnvLoader.cs
 ├── Program.cs           # Application entry point
-├── .env.example         # Environment variables template
+├── env.example          # Environment variables template (copy to .env)
 └── README.md            # This file
 ```
 
