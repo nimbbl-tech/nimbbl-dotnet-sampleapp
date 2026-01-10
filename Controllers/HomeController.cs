@@ -118,29 +118,14 @@ public class HomeController : Controller
 
     private async Task CreateOrderAsync(IndexViewModel model)
     {
-        var merchantToken = await GetMerchantTokenAsync();
-        _api.SetBearerToken(merchantToken);
-
         var totalAmount = (double)model.Amount;
         var orderRequest = BuildOrderRequest(model, totalAmount);
         
+        // SDK automatically generates and uses merchant token for authentication
         // SDK automatically encrypts payload if ENCRYPT_PAYLOAD flag is enabled
         // Encryption is handled in Orders.CreateOrderAsync based on the flag passed during SDK initialization
         var order = await _api.Orders().CreateOrderAsync(orderRequest);
         ExtractOrderData(model, order);
-    }
-
-    private async Task<string> GetMerchantTokenAsync()
-    {
-        var tokenResponse = await _api.Auth().GenerateTokenAsync();
-        var token = tokenResponse.TryGetProperty("token", out var prop) && prop.ValueKind == JsonValueKind.String
-            ? prop.GetString()
-            : null;
-        
-        if (string.IsNullOrWhiteSpace(token))
-            throw new Exception(ErrorMessages.MerchantTokenUnavailable);
-        
-        return token!;
     }
 
     private Dictionary<string, object?> BuildOrderRequest(IndexViewModel model, double totalAmount)
