@@ -8,18 +8,17 @@
   </PropertyGroup>
 
   <!-- Use published NuGet package (default) -->
-
+    <!--
   <ItemGroup>
-    <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc4" />
+    <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc5" />
   </ItemGroup>
+    -->
 
 
   <!-- Use local SDK project (uncomment to use local SDK instead of published package) -->
-    <!--
   <ItemGroup>
     <ProjectReference Include="../nimbbl-dotnet-sdk/Nimbbl.Sdk.Rest/Nimbbl.Sdk.Rest.csproj" />
   </ItemGroup>
-    -->
   
   <!-- Exclude ASP.NET Web Forms example files from build (they require .NET Framework) -->
   <ItemGroup>

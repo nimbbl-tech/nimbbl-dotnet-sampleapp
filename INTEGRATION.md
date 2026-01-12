@@ -45,11 +45,11 @@ Install-Package Nimbbl.Sdk.Rest
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc3" />
+  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc5" />
 </ItemGroup>
 ```
 
-**Note:** Replace `1.3.5-rc3` with the latest version available on [NuGet](https://www.nuget.org/packages/Nimbbl.Sdk.Rest). You can also omit the version to use the latest available version.
+**Note:** Replace `1.3.5-rc5` with the latest version available on [NuGet](https://www.nuget.org/packages/Nimbbl.Sdk.Rest). You can also omit the version to use the latest available version.
 
 **Using Package Manager UI:**
 
@@ -122,6 +122,111 @@ builder.Services.AddNimbbl(
     accessKey: accessKey,
     accessSecret: accessSecret);
 ```
+
+### 3. Token Management and Instance Reuse
+
+The SDK automatically manages merchant tokens and reuses them across requests when using dependency injection. However, if you need to create `NimbblApi` instances manually (e.g., in console apps or legacy code), use the factory pattern to ensure token reuse:
+
+#### Factory Pattern for Token Reuse
+
+```csharp
+using Nimbbl.Sdk.Rest.Api;
+
+/// <summary>
+/// Factory pattern for ensuring singleton NimbblApi instances.
+/// Use this when dependency injection is not available (e.g., console apps, legacy code).
+/// 
+/// This ensures token reuse across multiple NimbblApi instances with the same credentials.
+/// </summary>
+public static class NimbblApiFactory
+{
+    private static readonly object _lock = new object();
+    private static NimbblApi? _instance;
+    private static string? _cachedKey;
+    private static string? _cachedSecret;
+    private static string? _cachedBaseUrl;
+    private static bool _cachedEncryptPayload;
+
+    /// <summary>
+    /// Gets a singleton NimbblApi instance for the given credentials.
+    /// If an instance with the same credentials already exists, returns it.
+    /// Otherwise, creates a new instance and caches it.
+    /// </summary>
+    /// <param name="key">Nimbbl access key</param>
+    /// <param name="secret">Nimbbl access secret</param>
+    /// <param name="baseUrl">API base URL (optional, defaults to production)</param>
+    /// <param name="encryptPayload">Enable payload encryption (optional, defaults to false)</param>
+    /// <returns>NimbblApi instance (singleton per credential set)</returns>
+    public static NimbblApi GetInstance(
+        string key, 
+        string secret, 
+        string? baseUrl = null, 
+        bool encryptPayload = false)
+    {
+        // Check if we need to create a new instance
+        if (_instance == null || 
+            _cachedKey != key || 
+            _cachedSecret != secret ||
+            _cachedBaseUrl != baseUrl ||
+            _cachedEncryptPayload != encryptPayload)
+        {
+            lock (_lock)
+            {
+                // Double-check pattern to prevent race conditions
+                if (_instance == null || 
+                    _cachedKey != key || 
+                    _cachedSecret != secret ||
+                    _cachedBaseUrl != baseUrl ||
+                    _cachedEncryptPayload != encryptPayload)
+                {
+                    _instance = new NimbblApi(key, secret, baseUrl, null, encryptPayload);
+                    _cachedKey = key;
+                    _cachedSecret = secret;
+                    _cachedBaseUrl = baseUrl;
+                    _cachedEncryptPayload = encryptPayload;
+                }
+            }
+        }
+        
+        return _instance;
+    }
+
+    /// <summary>
+    /// Resets the cached instance. Use this if you need to create a new instance
+    /// with different credentials or settings.
+    /// </summary>
+    public static void Reset()
+    {
+        lock (_lock)
+        {
+            _instance?.Dispose();
+            _instance = null;
+            _cachedKey = null;
+            _cachedSecret = null;
+            _cachedBaseUrl = null;
+            _cachedEncryptPayload = false;
+        }
+    }
+}
+```
+
+#### Usage Example
+
+```csharp
+// ❌ NOT RECOMMENDED - Each instance has separate token cache
+var api1 = new NimbblApi(key, secret);  // Token cache 1
+var api2 = new NimbblApi(key, secret);  // Token cache 2 (separate)
+
+// ✅ RECOMMENDED - Factory pattern ensures token reuse
+var api1 = NimbblApiFactory.GetInstance(key, secret);  // Creates instance
+var api2 = NimbblApiFactory.GetInstance(key, secret);  // Returns same instance ✓
+```
+
+**Benefits:**
+- ✅ Token reuse across all calls
+- ✅ Thread-safe with lock-based synchronization
+- ✅ Works without dependency injection
+- ✅ Reduces unnecessary token generation API calls
 
 ## Basic Integration
 
