@@ -71,7 +71,7 @@ public class WebhookController : ControllerBase
             }
             else
             {
-                var parsed = Util.VerifyAndParseWebhook(raw, accessSecret, out parsedElement);
+                var parsed = SignatureVerifier.VerifyAndParseWebhook(raw, accessSecret, out parsedElement);
                 if (!parsed.Success)
                 return BadRequest(new { error = parsed.Message });
             }

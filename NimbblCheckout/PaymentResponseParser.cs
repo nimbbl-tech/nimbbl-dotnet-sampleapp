@@ -157,7 +157,7 @@ public static class PaymentResponseParser
                     }
                     else
                     {
-                        var verificationResult = Util.VerifySignature(attributesProp, accessSecret);
+                        var verificationResult = SignatureVerifier.VerifySignature(attributesProp, accessSecret);
                         parsed.SignatureValid = verificationResult.Success;
                         parsed.SignatureMessage = verificationResult.Message;
                     }
@@ -171,7 +171,7 @@ public static class PaymentResponseParser
                     }
                     else
                     {
-                        var verificationResult = Util.VerifySignature(payload, accessSecret);
+                        var verificationResult = SignatureVerifier.VerifySignature(payload, accessSecret);
                         parsed.SignatureValid = verificationResult.Success;
                         parsed.SignatureMessage = verificationResult.Message;
                     }

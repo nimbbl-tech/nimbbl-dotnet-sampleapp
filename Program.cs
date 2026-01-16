@@ -1,4 +1,4 @@
-﻿using Nimbbl.Sdk.Rest.Common;
+using Nimbbl.Sdk.Rest.Common;
 using Nimbbl.Sdk.Rest.Extensions;
 using Nimbbl.Sdk.Rest.Log;
 using NimbblDotnetSampleapp.Services;
@@ -24,7 +24,6 @@ var accessSecret = Environment.GetEnvironmentVariable("NIMBBL_ACCESS_SECRET")
 // Only read optional parameters in development mode
 var isDevelopment = builder.Environment.IsDevelopment();
 string? apiHost = null;
-bool? enableLogging = null;
 bool? debugLogging = null;
 string? logFilePath = null;
 bool encryptPayload = false;
@@ -32,8 +31,6 @@ bool encryptPayload = false;
 if (isDevelopment)
 {
     apiHost = Environment.GetEnvironmentVariable("NIMBBL_API_HOST");
-    if (bool.TryParse(Environment.GetEnvironmentVariable("NIMBBL_ENABLE_LOGGING"), out var enableLog))
-        enableLogging = enableLog;
     if (bool.TryParse(Environment.GetEnvironmentVariable("NIMBBL_DEBUG_LOGGING"), out var debugLog))
         debugLogging = debugLog;
     logFilePath = Environment.GetEnvironmentVariable("NIMBBL_LOG_FILE");
@@ -52,7 +49,6 @@ builder.Services.AddNimbbl(
     accessKey: accessKey,
     accessSecret: accessSecret,
     apiHost: apiHost,
-    enableLogging: enableLogging,
     debugLogging: debugLogging,
     logFilePath: logFilePath,
     encryptPayload: encryptPayload);

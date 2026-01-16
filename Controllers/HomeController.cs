@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -224,7 +224,7 @@ public class HomeController : Controller
         var responseParam = Request.Query["response"].ToString();
         logger.InfoWithCaller("PaymentSuccess - Received callback");
         logger.DebugWithCaller($"PaymentSuccess - Raw response param length: {responseParam?.Length ?? 0}");
-        var parsed = PaymentResponseParser.ParseBase64Response(responseParam, verifySignature: false);
+        var parsed = PaymentResponseParser.ParseBase64Response(responseParam ?? string.Empty, verifySignature: false);
 
         if (parsed != null)
         {
@@ -264,7 +264,7 @@ public class HomeController : Controller
         logger.InfoWithCaller("PaymentFailed - Received callback");
         logger.DebugWithCaller($"PaymentFailed - Raw response param length: {responseParam?.Length ?? 0}");
         // UI page only; signature verification is performed in the actual callback handlers.
-        var parsed = PaymentResponseParser.ParseBase64Response(responseParam, verifySignature: false);
+        var parsed = PaymentResponseParser.ParseBase64Response(responseParam ?? string.Empty, verifySignature: false);
 
         if (parsed != null)
         {
@@ -538,7 +538,7 @@ public class HomeController : Controller
             }
             else
             {
-                var verificationResult = Util.VerifySignature(verifyTarget, _config.AccessSecret);
+                var verificationResult = SignatureVerifier.VerifySignature(verifyTarget, _config.AccessSecret);
                 result["signature_valid"] = verificationResult.Success;
                 result["signature_message"] = verificationResult.Message;
                 if (!verificationResult.Success && !string.IsNullOrWhiteSpace(verificationResult.Message))
