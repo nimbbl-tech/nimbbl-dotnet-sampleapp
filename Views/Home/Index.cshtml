@@ -1,4 +1,4 @@
-﻿@model NimbblDotnetSampleapp.Models.IndexViewModel
+@model NimbblDotnetSampleapp.Models.IndexViewModel
 @{
     ViewData["Title"] = "Nimbbl Payment Integration";
 }
@@ -13,7 +13,7 @@
         </div>
     }
 
-    <form method="POST" action="@Url.Action("Index", "Home")">
+    <form method="POST" action="@Url.Action("Index", "Home")" id="checkoutForm">
         <div class="row">
             <div class="col-md-6">
                 <h3>Order Details</h3>
@@ -75,3 +75,83 @@
         </div>
     }
 </div>
+
+<script>
+(function() {
+    const form = document.getElementById('checkoutForm');
+    if (!form) {
+        return;
+    }
+    
+    form.addEventListener('submit', function(e) {
+        const modeSelect = document.getElementById('mode');
+        if (!modeSelect) {
+            return;
+        }
+        
+        const mode = modeSelect.value;
+        
+        // For popup mode, handle via AJAX to stay on same page
+        if (mode === 'popup') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const formData = new FormData(form);
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processing...';
+            
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    return response.text().then(text => {
+                        throw new Error('Server returned unexpected response type');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.checkoutScript) {
+                    // Extract script content from the HTML string
+                    const scriptMatch = data.checkoutScript.match(/<script[^>]*>([\s\S]*?)<\/script>/);
+                    if (scriptMatch && scriptMatch[1]) {
+                        // Create a new script element with type="module"
+                        const script = document.createElement('script');
+                        script.type = 'module';
+                        script.textContent = scriptMatch[1];
+                        document.body.appendChild(script);
+                        console.log('Checkout script inserted and should launch popup');
+                    } else {
+                        // Fallback: try inserting as HTML (for older browsers)
+                        const scriptContainer = document.createElement('div');
+                        scriptContainer.innerHTML = data.checkoutScript;
+                        document.body.appendChild(scriptContainer);
+                        console.log('Checkout script inserted via innerHTML');
+                    }
+                } else {
+                    alert('Failed to initialize checkout. Please try again.');
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+            });
+            
+            return false;
+        }
+        // For redirect mode, let the form submit normally
+    });
+})();
+</script>

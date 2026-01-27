@@ -1,4 +1,3 @@
-@model NimbblDotnetSampleapp.Models.PaymentSuccessViewModel
 @{
     Layout = null;
 }
@@ -77,37 +76,37 @@
   <div class="payment-result-container">
     <div class="success-header">
       <h1>✓ Payment Successful</h1>
-      @if (!string.IsNullOrEmpty(Model.FormattedAmount) && !string.IsNullOrEmpty(Model.Currency))
+      @if (!string.IsNullOrEmpty(ViewBag.FormattedAmount as string) && !string.IsNullOrEmpty(ViewBag.Currency as string))
       {
-        <p class="amount">for @Model.Currency @Model.FormattedAmount</p>
+        <p class="amount">for @ViewBag.Currency @ViewBag.FormattedAmount</p>
       }
     </div>
     
     <div class="zigzag-box">
-      @if (!string.IsNullOrEmpty(Model.TransactionId) || !string.IsNullOrEmpty(Model.PaymentMode) || !string.IsNullOrEmpty(Model.UserName))
+      @if (!string.IsNullOrEmpty(ViewBag.TransactionId as string) || !string.IsNullOrEmpty(ViewBag.PaymentMode as string) || !string.IsNullOrEmpty(ViewBag.UserName as string))
       {
         <div class="transaction-details">
           <p class="transaction-details-title">Transaction Details</p>
           <div class="transaction-details-content">
-            @if (!string.IsNullOrEmpty(Model.TransactionId))
+            @if (!string.IsNullOrEmpty(ViewBag.TransactionId as string))
             {
               <div class="detail-item">
                 <span class="detail-label">Transaction ID</span>
-                <span class="detail-value">@Model.TransactionId</span>
+                <span class="detail-value">@ViewBag.TransactionId</span>
               </div>
             }
-            @if (!string.IsNullOrEmpty(Model.PaymentMode))
+            @if (!string.IsNullOrEmpty(ViewBag.PaymentMode as string))
             {
               <div class="detail-item">
                 <span class="detail-label">Mode of Payment</span>
-                <span class="detail-value">@Model.PaymentMode</span>
+                <span class="detail-value">@ViewBag.PaymentMode</span>
               </div>
             }
-            @if (!string.IsNullOrEmpty(Model.UserName))
+            @if (!string.IsNullOrEmpty(ViewBag.UserName as string))
             {
               <div class="detail-item">
                 <span class="detail-label">Name of the Sender</span>
-                <span class="detail-value">@Model.UserName</span>
+                <span class="detail-value">@ViewBag.UserName</span>
               </div>
             }
           </div>

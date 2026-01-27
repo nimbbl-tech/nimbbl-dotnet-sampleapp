@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Nimbbl.Sdk.Rest.Api;
+using Nimbbl.Sdk.Rest;
 using Nimbbl.Sdk.Rest.Common;
 using System.Text.Json;
 

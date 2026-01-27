@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Nimbbl.Sdk.Rest.Common;
 using NimbblDotnetSampleapp.Models;
 
 namespace NimbblDotnetSampleapp.NimbblCheckout;
@@ -77,15 +78,11 @@ public class CheckoutScriptBuilder
     }}
     
     let decodedResponse = response;
-    const encryptedResponse = response?.payload?.encrypted_response;
     try {{
       const res = await fetch('{apiEndpoint}', {{
         method: 'POST',
         headers: {{ 'Content-Type': 'application/json' }},
-        body: JSON.stringify({{
-          encrypted_response: encryptedResponse || null,
-          callback: response
-        }})
+        body: JSON.stringify(response)
       }});
 
       if (!res.ok) {{
@@ -93,8 +90,9 @@ public class CheckoutScriptBuilder
       }}
 
       const data = await res.json();
-      if (data.parsed) {{
-        decodedResponse = data.parsed;
+      // Backend returns the parsed root directly, not wrapped in {{parsed: ...}}
+      if (data) {{
+        decodedResponse = data;
       }} else {{
         window.location.href = '{failedUrl}?error=1';
         return;
@@ -118,41 +116,51 @@ public class CheckoutScriptBuilder
       }}
     }}
     
+    // Extract payload (matches PaymentResponseParser logic)
     const payload = decodedResponse.payload || decodedResponse;
     
-    // Extract status - check nested transaction and order status as well
-    let status = payload.status || decodedResponse.status;
-    if (!status && payload.transaction && payload.transaction.status) {{
-      status = payload.transaction.status;
-    }}
-    if (!status && payload.order && payload.order.status) {{
-      status = payload.order.status;
-    }}
-    // Default to 'failed' only if no status found at all
-    if (!status) {{
-      status = 'failed';
+    // Extract Order ID (matches PaymentResponseParser: only nimbbl_order_id, no fallback to order_id)
+    const orderId = payload.nimbbl_order_id || '';
+    
+    // Extract Transaction ID only from inside transaction object (no fallback)
+    let transactionId = null;
+    if (payload.transaction && payload.transaction.transaction_id) {{
+      transactionId = payload.transaction.transaction_id;
     }}
     
-    const orderId = payload.nimbbl_order_id || payload.order_id || '';
-    const transactionId = payload.nimbbl_transaction_id || payload.transaction_id || '';
-    const message = payload.message || '';
+    // Extract Status (matches PaymentResponseParser: transaction.status first, then payload.status, default to 'unknown')
+    // Always use transaction.status if available (this is the authoritative status)
+    let status = null;
+    if (payload.transaction && payload.transaction.status) {{
+      status = payload.transaction.status;
+    }}
+    // Only fall back to payload.status if transaction.status was not found
+    if (!status) {{
+      status = payload.status || decodedResponse.status || 'unknown';
+    }}
+    
+    // Extract Message (matches PaymentResponseParser: payload.message first, then root.message, default to empty)
+    const message = payload.message || decodedResponse.message || '';
     
     const responseJson = JSON.stringify(decodedResponse);
     const encodedResponse = btoa(responseJson);
     
-    if (status === 'success' || status === 'succeeded' || status === 'completed') {{
+    // Check for success statuses (both ""success"" and ""succeeded"" indicate success)
+    if (status === 'succeeded' || status === 'success') {{
       window.__nimbbl_callback_handled = true;
-      window.location.href = '{successUrl}?response=' + encodeURIComponent(encodedResponse) +
-        (orderId ? '&order_id=' + encodeURIComponent(orderId) : '') +
-        (transactionId ? '&transaction_id=' + encodeURIComponent(transactionId) : '') +
-        (message ? '&message=' + encodeURIComponent(message) : '');
+      let url = '{successUrl}?response=' + encodeURIComponent(encodedResponse);
+      if (orderId) url += '&order_id=' + encodeURIComponent(orderId);
+      if (transactionId) url += '&transaction_id=' + encodeURIComponent(transactionId);
+      if (message) url += '&message=' + encodeURIComponent(message);
+      window.location.href = url;
     }} else {{
       window.__nimbbl_callback_handled = true;
-      window.location.href = '{failedUrl}?response=' + encodeURIComponent(encodedResponse) +
-        (orderId ? '&order_id=' + encodeURIComponent(orderId) : '') +
-        (transactionId ? '&transaction_id=' + encodeURIComponent(transactionId) : '') +
-        (message ? '&message=' + encodeURIComponent(message) : '') +
-        '&status=' + encodeURIComponent(status || 'failed');
+      let url = '{failedUrl}?response=' + encodeURIComponent(encodedResponse);
+      if (orderId) url += '&order_id=' + encodeURIComponent(orderId);
+      if (transactionId) url += '&transaction_id=' + encodeURIComponent(transactionId);
+      if (message) url += '&message=' + encodeURIComponent(message);
+      url += '&status=' + encodeURIComponent(status || 'failed');
+      window.location.href = url;
     }}
   }} catch (e) {{
     window.location.href = '{failedUrl}?error=1';

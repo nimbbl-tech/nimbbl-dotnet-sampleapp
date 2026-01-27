@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Nimbbl.Sdk.Rest.Common;
 using Nimbbl.Sdk.Rest.Log;
+using NimbblDotnetSampleapp.NimbblCheckout;
 using NimbblDotnetSampleapp.Services;
 using System.Text;
 using System.Text.Json;
@@ -12,10 +13,26 @@ namespace NimbblDotnetSampleapp.Controllers;
 public class WebhookController : ControllerBase
 {
     private readonly NimbblConfiguration _config;
+    private readonly Nimbbl.Sdk.Rest.NimbblApi _api;
 
     public WebhookController(NimbblConfiguration config)
     {
         _config = config;
+        
+        // Build baseUrl from apiHost if provided, otherwise use default
+        string? baseUrl = null;
+        if (!string.IsNullOrWhiteSpace(config.ApiHost))
+        {
+            baseUrl = $"{config.ApiHost.TrimEnd('/')}/api/";
+        }
+        
+        _api = new Nimbbl.Sdk.Rest.NimbblApi(
+            config.AccessKey,
+            config.AccessSecret,
+            config.ApiHost,
+            null,
+            config.EncryptPayload
+        );
     }
 
     [HttpPost]
@@ -41,48 +58,27 @@ public class WebhookController : ControllerBase
             }
 
             var accessSecret = _config.AccessSecret;
-            JsonElement parsedElement;
+            var root = PayloadHelperUtils.Parse(raw, accessSecret);
 
-            // Auto-detect encrypted webhooks (no flag):
-            // - If encrypted_response is present: decrypt it.
-            // - Else: verify+parse raw payload.
-            var body = JsonSerializer.Deserialize<JsonElement>(raw);
-            if (body.ValueKind == JsonValueKind.Object
-                && body.TryGetProperty("encrypted_response", out var encryptedResponseProp)
-                && encryptedResponseProp.ValueKind == JsonValueKind.String)
+            if (!SignatureVerifier.VerifySignature(root, accessSecret))
             {
-                var encryptedResponse = encryptedResponseProp.GetString();
-                if (string.IsNullOrWhiteSpace(encryptedResponse))
-                    return BadRequest(new { error = "Encrypted webhook payload is empty." });
-
-                try
-                {
-                    var enc = new Encryption(accessSecret);
-                    var decryptedJson = enc.Decrypt(encryptedResponse, true);
-                    logger.DebugWithCaller($"Webhook decrypted JSON: {decryptedJson}");
-                    parsedElement = JsonSerializer.Deserialize<JsonElement>(decryptedJson);
-                    Logger.GetInstance().InfoWithCaller("Successfully decrypted encrypted webhook payload");
-                }
-                catch (Exception decryptEx)
-                {
-                    Logger.GetInstance().ExceptionWithCaller($"Failed to decrypt webhook payload: {decryptEx.Message}", decryptEx);
-                    return BadRequest(new { error = "Failed to decrypt webhook payload." });
-                }
-            }
-            else
-            {
-                var parsed = SignatureVerifier.VerifyAndParseWebhook(raw, accessSecret, out parsedElement);
-                if (!parsed.Success)
-                return BadRequest(new { error = parsed.Message });
+                logger.ErrorWithCaller("Webhook signature verification failed.");
+                return BadRequest(new { error = "Invalid signature or payload" });
             }
 
-            var eventType = parsedElement.TryGetProperty("event_type", out var et) ? et.GetString() : "unknown";
-            logger.InfoWithCaller($"Webhook verified successfully - Event type: {eventType}");
+            var eventType = JsonUtils.TryGetString(root, JsonKeys.EventType) ?? "unknown";
 
-            ProcessWebhookEvent(parsedElement);
+            var paymentFields = PaymentResponseParser.ExtractPaymentFields(root);
+            var orderId = paymentFields.orderId;
+            var transactionId = paymentFields.transactionId;
+            
+            ProcessWebhookEvent(root, orderId, transactionId);
 
             logger.InfoWithCaller($"Webhook processed successfully - Event type: {eventType}");
-            return Ok(new { received = true, event_type = eventType });
+            return Ok(new Dictionary<string, object?> { 
+                [JsonKeys.Received] = true, 
+                [JsonKeys.EventType] = eventType 
+            });
         }
         catch (Exception ex)
         {
@@ -91,16 +87,10 @@ public class WebhookController : ControllerBase
         }
     }
 
-    private void ProcessWebhookEvent(JsonElement eventData)
+    private void ProcessWebhookEvent(JsonElement eventData, string? orderId, string? transactionId)
     {
         var logger = Logger.GetInstance();
         var eventType = eventData.TryGetProperty("event_type", out var et) ? et.GetString() : "";
-        var orderId = eventData.TryGetProperty("nimbbl_order_id", out var oid) ? oid.GetString() : "";
-        var transactionId = eventData.TryGetProperty("nimbbl_transaction_id", out var tid) 
-            ? tid.GetString() 
-            : (eventData.TryGetProperty("transaction", out var txn) && txn.TryGetProperty("transaction_id", out var txnId)
-                ? txnId.GetString() 
-                : "");
 
         logger.InfoWithCaller($"Processing webhook event - Type: {eventType}, Order: {orderId ?? "N/A"}, Transaction: {transactionId ?? "N/A"}");
 

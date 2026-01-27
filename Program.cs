@@ -44,7 +44,7 @@ if (isDevelopment)
 if (bool.TryParse(Environment.GetEnvironmentVariable("ENCRYPT_PAYLOAD"), out var encryptPay))
     encryptPayload = encryptPay;
 
-// Register NimbblApi via DI extension
+// Register NimbblClient via DI extension
 builder.Services.AddNimbbl(
     accessKey: accessKey,
     accessSecret: accessSecret,
