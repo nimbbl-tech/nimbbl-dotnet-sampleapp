@@ -45,7 +45,7 @@ Install-Package Nimbbl.Sdk.Rest
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5-rc5" />
+  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5" />
 </ItemGroup>
 ```
 
