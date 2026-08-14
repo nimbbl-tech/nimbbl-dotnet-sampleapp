@@ -933,6 +933,7 @@ To integrate Nimbbl checkout into your existing ASP.NET Web Forms project:
 
    **Step 2: Generate and inject checkout script**
 
+   {% raw %}
    ```csharp
    var script = $@"<script type=""module"">
    import Checkout from ""https://cdn.jsdelivr.net/npm/nimbbl_sonic@latest"";
@@ -942,6 +943,7 @@ To integrate Nimbbl checkout into your existing ASP.NET Web Forms project:
    
    checkoutScriptPlaceholder.Controls.Add(new LiteralControl(script));
    ```
+   {% endraw %}
 
 4. **In your `.aspx` markup**, add a placeholder for the script:
 
@@ -970,6 +972,7 @@ The following sections provide complete examples for popup and redirect modes.
 
 In popup mode, the payment happens in a popup window. The callback handler is executed in JavaScript.
 
+{% raw %}
 ```csharp
 protected async void BtnPayNow_Click(object sender, EventArgs e)
 {
@@ -1071,6 +1074,7 @@ checkout.open(options);
     }
 }
 ```
+{% endraw %}
 
 ##### Redirect Mode
 
@@ -1078,6 +1082,7 @@ In redirect mode, the user is redirected to Nimbbl's checkout page. After paymen
 
 **Important:** The `callback_url` must be publicly accessible (not `localhost`).
 
+{% raw %}
 ```csharp
 protected async void BtnPayNow_Click(object sender, EventArgs e)
 {
@@ -1147,6 +1152,7 @@ checkout.open(options);
     }
 }
 ```
+{% endraw %}
 
 **How Redirect Mode Works:**
 
