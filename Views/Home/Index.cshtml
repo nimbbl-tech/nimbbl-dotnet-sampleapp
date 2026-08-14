@@ -1,28 +1,157 @@
-﻿@model SampleAspNetCore.Models.HomeModel
+@model NimbblDotnetSampleapp.Models.IndexViewModel
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Nimbbl Payment Integration";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <script src="@Model.NimbblHostUrl/static/assets/js/checkout.js"></script>
-    <script>
-        var options = {
-            "access_key": '@Model.AccessKey', // Enter the Key ID generated from the Dashboard
-            "order_id": '@Model.OrderId', // Enter the order_id from the create-order api
-            "callback_handler": function (response) {
-                alert(response.nimbbl_transaction_id);
-                alert(response.nimbbl_order_id);
-                alert(response.nimbbl_signature);
-                alert(response.status);
-            },
-            "custom": {
-                "key_1": "val_1",
-                "key_2": "val_2"
-            },
-        };
+<div class="container mt-4">
+    <h1 class="mb-4">Nimbbl Payment Integration Demo</h1>
 
-        var checkout = new NimbblCheckout(options);
-        checkout.open(options.order_id);
-    </script>
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert alert-danger" role="alert">
+            @Model.Error
+        </div>
+    }
+
+    <form method="POST" action="@Url.Action("Index", "Home")" id="checkoutForm">
+        <div class="row">
+            <div class="col-md-6">
+                <h3>Order Details</h3>
+                
+                <div class="form-group">
+                    <label for="amount">Amount (₹)</label>
+                    <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0.01" value="@Model.Amount" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="currency">Currency</label>
+                    <select class="form-control" id="currency" name="currency">
+                        <option value="INR" selected>INR</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="mode">Checkout Mode</label>
+                    <select class="form-control" id="mode" name="mode">
+                        <option value="popup" selected>Popup</option>
+                        <option value="redirect">Redirect</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <h3>User Details (Optional)</h3>
+                
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" value="@Model.Name">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" value="@Model.Email">
+                </div>
+
+                <div class="form-group">
+                    <label for="mobile">Mobile (10 digits)</label>
+                    <input type="text" class="form-control" id="mobile" name="mobile" pattern="[0-9]{10}" value="@Model.Mobile" maxlength="10">
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-lg">Pay Now</button>
+            </div>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrEmpty(Model.CheckoutScript))
+    {
+        <div class="mt-4">
+            @Html.Raw(Model.CheckoutScript)
+        </div>
+    }
 </div>
+
+<script>
+(function() {
+    const form = document.getElementById('checkoutForm');
+    if (!form) {
+        return;
+    }
+    
+    form.addEventListener('submit', function(e) {
+        const modeSelect = document.getElementById('mode');
+        if (!modeSelect) {
+            return;
+        }
+        
+        const mode = modeSelect.value;
+        
+        // For popup mode, handle via AJAX to stay on same page
+        if (mode === 'popup') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const formData = new FormData(form);
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processing...';
+            
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    return response.text().then(text => {
+                        throw new Error('Server returned unexpected response type');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.checkoutScript) {
+                    // Extract script content from the HTML string
+                    const scriptMatch = data.checkoutScript.match(/<script[^>]*>([\s\S]*?)<\/script>/);
+                    if (scriptMatch && scriptMatch[1]) {
+                        // Create a new script element with type="module"
+                        const script = document.createElement('script');
+                        script.type = 'module';
+                        script.textContent = scriptMatch[1];
+                        document.body.appendChild(script);
+                        console.log('Checkout script inserted and should launch popup');
+                    } else {
+                        // Fallback: try inserting as HTML (for older browsers)
+                        const scriptContainer = document.createElement('div');
+                        scriptContainer.innerHTML = data.checkoutScript;
+                        document.body.appendChild(scriptContainer);
+                        console.log('Checkout script inserted via innerHTML');
+                    }
+                } else {
+                    alert('Failed to initialize checkout. Please try again.');
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+            });
+            
+            return false;
+        }
+        // For redirect mode, let the form submit normally
+    });
+})();
+</script>
