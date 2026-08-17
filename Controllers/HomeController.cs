@@ -204,17 +204,17 @@ public class HomeController : Controller
             logger.InfoWithCaller("Payment callback received - Parsing response");
 
             var accessSecret = _config.AccessSecret;
-            
-            // Parse and unwrap the payload
-            var root = PayloadHelperUtils.ParseResponse(responseParam, accessSecret);
-            
-            // Verify signature on the parsed payload
-            if (!SignatureVerifier.VerifyCallbackSignature(root, accessSecret))
+
+            // Version-aware verification: handles v4 signed/encrypted callbacks and legacy responses,
+            // unwraps the checkout envelope, and returns the verified event payload.
+            var result = SignatureVerifier.VerifyCallback(responseParam, accessSecret);
+            if (!result.Success || !result.Payload.HasValue)
             {
-                logger.ErrorWithCaller("Payment callback - Signature verification failed.");
+                logger.ErrorWithCaller($"Payment callback - Signature verification failed: {result.Message}");
                 throw new Exception(ErrorMessages.InvalidResponseFormat);
             }
 
+            var root = result.Payload.Value;
             var (orderId, transactionId, status, message) = PaymentResponseParser.ExtractPaymentFields(root);
 
             logger.InfoWithCaller($"Payment callback - Parsed status: {status}, Order: {orderId}, Transaction: {transactionId}");
@@ -269,16 +269,16 @@ public class HomeController : Controller
                 return BadRequest(new { error = "Empty callback body." });
 
             var accessSecret = _config.AccessSecret;
-        
-            var root = PayloadHelperUtils.ParseResponse(raw, accessSecret);
 
-            if (!SignatureVerifier.VerifyCallbackSignature(root, accessSecret))
+            // Version-aware verification (v4 signed/encrypted + legacy), returns the verified event payload.
+            var result = SignatureVerifier.VerifyCallback(raw, accessSecret);
+            if (!result.Success || !result.Payload.HasValue)
             {
-                logger.ErrorWithCaller("PaymentCallback(POST) - Signature verification failed.");
+                logger.ErrorWithCaller($"PaymentCallback(POST) - Signature verification failed: {result.Message}");
                 return BadRequest(new { error = "Invalid signature or response format." });
             }
-            // Return root JsonElement directly as JSON
-            return Ok(root);
+            // Return the verified event payload directly as JSON
+            return Ok(result.Payload.Value);
         }
         catch (Exception ex)
         {
@@ -304,14 +304,10 @@ public class HomeController : Controller
             try
             {
                 var accessSecret = _config.AccessSecret;
-                var root = PayloadHelperUtils.ParseResponse(response, accessSecret);
-                
-                // Extract payload
-                JsonElement payload = root;
-                if (root.TryGetProperty(JsonKeys.Payload, out var p))
-                {
-                    payload = p;
-                }
+
+                // Version-aware verification returns the verified event payload (v4 + legacy).
+                var result = SignatureVerifier.VerifyCallback(response, accessSecret);
+                JsonElement payload = result.Payload ?? default;
 
                 // Extract transaction details
                 if (payload.TryGetProperty(JsonKeys.Transaction, out var txn) && txn.ValueKind == JsonValueKind.Object)

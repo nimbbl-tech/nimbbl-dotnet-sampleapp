@@ -7,20 +7,18 @@
     <RootNamespace>NimbblDotnetSampleapp</RootNamespace>
   </PropertyGroup>
 
-  <!-- Use published NuGet package (default) -->
+  <!-- Use local SDK source (default within this consolidated workspace — always matches the SDK code) -->
   <ItemGroup>
-    <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5" />
+    <ProjectReference Include="../../server-sdks/nimbbl-dotnet-sdk/Nimbbl.Sdk.Rest/Nimbbl.Sdk.Rest.csproj" />
   </ItemGroup>
-  
 
-
-  <!-- Use local SDK project (uncomment to use local SDK instead of published package) -->
-      <!--
+  <!-- Use published NuGet package (uncomment to build against the released package instead) -->
+  <!--
   <ItemGroup>
-    <ProjectReference Include="../nimbbl-dotnet-sdk/Nimbbl.Sdk.Rest/Nimbbl.Sdk.Rest.csproj" />
+    <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.4.0" />
   </ItemGroup>
     -->
-  
+
   <!-- Exclude ASP.NET Web Forms example files from build (they require .NET Framework) -->
   <ItemGroup>
     <Compile Remove="WebFrameworkExamples\ASPNETWebForms\**\*.aspx.cs" />
