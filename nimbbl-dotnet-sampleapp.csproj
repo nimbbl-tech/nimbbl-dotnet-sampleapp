@@ -7,15 +7,15 @@
     <RootNamespace>NimbblDotnetSampleapp</RootNamespace>
   </PropertyGroup>
 
-  <!-- Use local SDK source (default within this consolidated workspace — always matches the SDK code) -->
-  <ItemGroup>
-    <ProjectReference Include="../../server-sdks/nimbbl-dotnet-sdk/Nimbbl.Sdk.Rest/Nimbbl.Sdk.Rest.csproj" />
-  </ItemGroup>
-
-  <!-- Use published NuGet package (uncomment to build against the released package instead) -->
-  <!--
+  <!-- Use published NuGet package (production release) -->
   <ItemGroup>
     <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.4.0" />
+  </ItemGroup>
+
+  <!-- Use local SDK source (uncomment to build against the in-workspace SDK code instead) -->
+  <!--
+  <ItemGroup>
+    <ProjectReference Include="../../server-sdks/nimbbl-dotnet-sdk/Nimbbl.Sdk.Rest/Nimbbl.Sdk.Rest.csproj" />
   </ItemGroup>
     -->
 
