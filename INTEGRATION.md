@@ -45,11 +45,11 @@ Install-Package Nimbbl.Sdk.Rest
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.3.5" />
+  <PackageReference Include="Nimbbl.Sdk.Rest" Version="1.4.0" />
 </ItemGroup>
 ```
 
-**Note:** Replace `1.3.5-rc5` with the latest version available on [NuGet](https://www.nuget.org/packages/Nimbbl.Sdk.Rest). You can also omit the version to use the latest available version.
+**Note:** Replace `1.4.0` with the latest version available on [NuGet](https://www.nuget.org/packages/Nimbbl.Sdk.Rest). You can also omit the version to use the latest available version.
 
 **Using Package Manager UI:**
 

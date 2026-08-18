@@ -31,18 +31,23 @@ public static class PaymentResponseParser
             ?? JsonUtils.TryGetString(payload, JsonKeys.TransactionId);
 
         // 3. Extract Status
-        // Always use transaction.status if available (this is the authoritative status)
-        // Fall back to payload.status only if transaction is not present
-        string? status = null;
-        if (payload.TryGetProperty(JsonKeys.Transaction, out var txn) && txn.ValueKind == JsonValueKind.Object)
+        // Status source order (mirrors the PHP sample app):
+        //   1. checkout_status  — v4 minimal checkout callback carries status here
+        //   2. transaction.status — legacy per-field callback
+        //   3. status           — top-level fallback
+        // NOTE: for v4 the callback is minimal; Transaction Enquiry is the authoritative
+        // source of truth. Consider enquiring the transaction to confirm final status.
+        string? status = JsonUtils.TryGetString(payload, JsonKeys.CheckoutStatus);
+
+        if (string.IsNullOrEmpty(status)
+            && payload.TryGetProperty(JsonKeys.Transaction, out var txn) && txn.ValueKind == JsonValueKind.Object)
         {
             status = JsonUtils.TryGetString(txn, JsonKeys.Status);
         }
-        
-        // Only fall back to payload.status if transaction.status was not found
+
         if (string.IsNullOrEmpty(status))
         {
-            status = JsonUtils.TryGetString(payload, JsonKeys.Status) 
+            status = JsonUtils.TryGetString(payload, JsonKeys.Status)
                 ?? "unknown";
         }
         

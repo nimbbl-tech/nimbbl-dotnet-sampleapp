@@ -58,26 +58,30 @@ public class WebhookController : ControllerBase
             }
 
             var accessSecret = _config.AccessSecret;
-            var root = PayloadHelperUtils.Parse(raw, accessSecret);
 
-            if (!SignatureVerifier.VerifySignature(root, accessSecret))
+            // Version-aware verification: automatically handles v4 signed/encrypted envelopes
+            // and legacy (v1/v2/v3) per-field signatures, and returns the parsed event payload.
+            var result = SignatureVerifier.VerifyWebhook(raw, accessSecret);
+
+            if (!result.Success)
             {
-                logger.ErrorWithCaller("Webhook signature verification failed.");
+                logger.ErrorWithCaller($"Webhook signature verification failed: {result.Message}");
                 return BadRequest(new { error = "Invalid signature or payload" });
             }
 
-            var eventType = JsonUtils.TryGetString(root, JsonKeys.EventType) ?? "unknown";
+            var eventType = result.EventType ?? "unknown";
 
-            var paymentFields = PaymentResponseParser.ExtractPaymentFields(root);
-            var orderId = paymentFields.orderId;
-            var transactionId = paymentFields.transactionId;
-            
-            ProcessWebhookEvent(root, orderId, transactionId);
+            if (result.Payload.HasValue)
+            {
+                var root = result.Payload.Value;
+                var paymentFields = PaymentResponseParser.ExtractPaymentFields(root);
+                ProcessWebhookEvent(root, paymentFields.orderId, paymentFields.transactionId);
+            }
 
-            logger.InfoWithCaller($"Webhook processed successfully - Event type: {eventType}");
-            return Ok(new Dictionary<string, object?> { 
-                [JsonKeys.Received] = true, 
-                [JsonKeys.EventType] = eventType 
+            logger.InfoWithCaller($"Webhook processed successfully - version: {result.Version}, event type: {eventType}");
+            return Ok(new Dictionary<string, object?> {
+                [JsonKeys.Received] = true,
+                [JsonKeys.EventType] = eventType
             });
         }
         catch (Exception ex)
@@ -114,6 +118,38 @@ public class WebhookController : ControllerBase
 
             case "payment_reversed":
                 HandlePaymentReversed(orderId, transactionId, eventData);
+                break;
+
+            // Pre-auth lifecycle events
+            case "payment_authorized":
+                logger.InfoWithCaller($"Payment authorized (pre-auth) - Order: {orderId ?? "N/A"}, Transaction: {transactionId ?? "N/A"}. Funds held; capture to collect or void to release.");
+                // TODO: mark order as authorized; do NOT fulfil until capture_success.
+                break;
+
+            case "capture_pending":
+                logger.InfoWithCaller($"Capture pending (pre-auth) - Order: {orderId ?? "N/A"}, Transaction: {transactionId ?? "N/A"}");
+                break;
+
+            case "capture_success":
+                logger.InfoWithCaller($"Capture succeeded (pre-auth) - Order: {orderId ?? "N/A"}, Transaction: {transactionId ?? "N/A"}. Safe to fulfil.");
+                // TODO: mark order as paid and fulfil.
+                break;
+
+            case "capture_failed":
+                logger.ErrorWithCaller($"Capture failed (pre-auth) - Order: {orderId ?? "N/A"}, Transaction: {transactionId ?? "N/A"}");
+                break;
+
+            case "void_pending":
+                logger.InfoWithCaller($"Void pending (pre-auth) - Order: {orderId ?? "N/A"}, Transaction: {transactionId ?? "N/A"}");
+                break;
+
+            case "void_success":
+                logger.InfoWithCaller($"Void succeeded (pre-auth) - Order: {orderId ?? "N/A"}, Transaction: {transactionId ?? "N/A"}. Hold released without charging.");
+                // TODO: mark order as cancelled/released.
+                break;
+
+            case "void_failed":
+                logger.ErrorWithCaller($"Void failed (pre-auth) - Order: {orderId ?? "N/A"}, Transaction: {transactionId ?? "N/A"}");
                 break;
 
             case "refund_success":

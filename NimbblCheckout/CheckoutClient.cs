@@ -72,19 +72,18 @@ public class CheckoutClient
             [CheckoutConstants.ConfigKeyToken] = options.OrderToken
         };
 
-        // Only add optional hosts in development mode
-        var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
-        if (isDevelopment)
-        {
-            var apiHost = Environment.GetEnvironmentVariable("NIMBBL_API_HOST");
-            var checkoutHost = Environment.GetEnvironmentVariable("NIMBBL_CHECKOUT_HOST");
+        // Always forward apiHost/checkoutHost to the JS SDK when configured (parity with the PHP
+        // sample app, which always passes them). Without these the SDK defaults to PRODUCTION hosts
+        // (sonic.nimbbl.tech + api.nimbbl.tech), so a UAT/QA order token would open on the prod
+        // checkout and fail. For UAT (apipp) set NIMBBL_CHECKOUT_HOST=https://sonicpp.nimbbl.tech.
+        var apiHost = Environment.GetEnvironmentVariable("NIMBBL_API_HOST");
+        var checkoutHost = Environment.GetEnvironmentVariable("NIMBBL_CHECKOUT_HOST");
 
-            if (!string.IsNullOrWhiteSpace(apiHost))
-                checkoutConfig[CheckoutConstants.ConfigKeyApiHost] = apiHost;
+        if (!string.IsNullOrWhiteSpace(apiHost))
+            checkoutConfig[CheckoutConstants.ConfigKeyApiHost] = apiHost;
 
-            if (!string.IsNullOrWhiteSpace(checkoutHost))
-                checkoutConfig[CheckoutConstants.ConfigKeyCheckoutHost] = checkoutHost;
-        }
+        if (!string.IsNullOrWhiteSpace(checkoutHost))
+            checkoutConfig[CheckoutConstants.ConfigKeyCheckoutHost] = checkoutHost;
 
         var checkoutConfigJson = JsonSerializer.Serialize(checkoutConfig, new JsonSerializerOptions
         {
@@ -120,7 +119,7 @@ options.callback_handler = {options.CallbackHandler};";
         }
 
         return $@"<script type=""module"">
-import Checkout from ""https://cdn.jsdelivr.net/npm/nimbbl_sonic@latest"";
+import Checkout from ""https://cdn.jsdelivr.net/npm/nimbbl_sonic@latest/+esm"";
 const checkout = new Checkout({checkoutConfigJson});
 const options = {optionsJson} || {{}};{callbackHandlerCode}
 checkout.open(options);

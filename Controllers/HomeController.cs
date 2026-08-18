@@ -204,40 +204,77 @@ public class HomeController : Controller
             logger.InfoWithCaller("Payment callback received - Parsing response");
 
             var accessSecret = _config.AccessSecret;
-            
-            // Parse and unwrap the payload
-            var root = PayloadHelperUtils.ParseResponse(responseParam, accessSecret);
-            
-            // Verify signature on the parsed payload
-            if (!SignatureVerifier.VerifyCallbackSignature(root, accessSecret))
+
+            // Version-aware verification: handles v4 signed/encrypted callbacks and legacy responses,
+            // unwraps the checkout envelope, and returns the verified event payload.
+            var result = SignatureVerifier.VerifyCallback(responseParam, accessSecret);
+            if (!result.Success || !result.Payload.HasValue)
             {
-                logger.ErrorWithCaller("Payment callback - Signature verification failed.");
+                logger.ErrorWithCaller($"Payment callback - Signature verification failed: {result.Message}");
                 throw new Exception(ErrorMessages.InvalidResponseFormat);
             }
 
-            var (orderId, transactionId, status, message) = PaymentResponseParser.ExtractPaymentFields(root);
+            var root = result.Payload.Value;
+            var (orderId, transactionId, callbackStatus, message) = PaymentResponseParser.ExtractPaymentFields(root);
 
-            logger.InfoWithCaller($"Payment callback - Parsed status: {status}, Order: {orderId}, Transaction: {transactionId}");
-
-            // Check for success statuses (both "success" and "succeeded" indicate success)
-            if (status == NimbblCheckout.CheckoutConstants.PaymentStatusSucceeded || 
-                status == NimbblCheckout.CheckoutConstants.PaymentStatusSuccess)
+            // Source of truth: the v4 callback is MINIMAL, so confirm the real outcome via
+            // Transaction Enquiry (same as Sonic Checkout). Fall back to the callback's own status
+            // (checkout_status / transaction.status) only if enquiry is unavailable.
+            var status = callbackStatus;
+            if (!string.IsNullOrWhiteSpace(transactionId))
             {
-                return RedirectToAction("PaymentSuccess", new { 
+                try
+                {
+                    var enquiry = await _api.Transactions().TransactionEnquiryAsync(
+                        new Dictionary<string, object?> { ["transaction_id"] = transactionId });
+                    var enquiryStatus = ExtractEnquiryPaymentStatus(enquiry);
+                    if (!string.IsNullOrWhiteSpace(enquiryStatus))
+                    {
+                        status = enquiryStatus;
+                    }
+                }
+                catch (Exception enqEx)
+                {
+                    logger.ErrorWithCaller($"Callback Transaction Enquiry failed for {transactionId}: {enqEx.Message}");
+                    // keep callbackStatus as fallback
+                }
+            }
+
+            logger.InfoWithCaller($"Payment callback - status (source of truth): {status}, callback status: {callbackStatus}, Order: {orderId}, Transaction: {transactionId}");
+
+            // Normalized outcome (mirrors Sonic Checkout's mapping of the enquiry payment_status):
+            //   succeeded/success/captured/completed -> success
+            //   authorized (pre-auth)                -> authorized (funds held, NOT captured — capture first)
+            //   everything else (failed/pending/...) -> failed
+            var normalized = (status ?? string.Empty).ToLowerInvariant();
+            if (normalized is "succeeded" or "success" or "captured" or "completed")
+            {
+                return RedirectToAction("PaymentSuccess", new {
                     response = responseParam,
-                    order_id = orderId, 
-                    transaction_id = transactionId, 
-                    message = message 
+                    order_id = orderId,
+                    transaction_id = transactionId,
+                    message = message
+                });
+            }
+            else if (normalized == "authorized")
+            {
+                // Pre-authorization: funds are held but not captured. This is NOT a failure.
+                // Per the docs, do NOT fulfil the order on 'authorized' — capture (or void) first.
+                return RedirectToAction("PaymentSuccess", new {
+                    response = responseParam,
+                    order_id = orderId,
+                    transaction_id = transactionId,
+                    message = "Payment authorized (pre-auth): funds are held, not yet captured. Capture to collect or void to release before fulfilling the order."
                 });
             }
             else
             {
-                return RedirectToAction("PaymentFailed", new { 
+                return RedirectToAction("PaymentFailed", new {
                     response = responseParam,
-                    order_id = orderId, 
-                    transaction_id = transactionId, 
-                    message = message, 
-                    status = status 
+                    order_id = orderId,
+                    transaction_id = transactionId,
+                    message = message,
+                    status = status
                 });
             }
         }
@@ -246,6 +283,35 @@ public class HomeController : Controller
             Logger.GetInstance().ExceptionWithCaller($"Payment callback error: {ex.Message}", ex);
             return RedirectToAction("PaymentFailed", new { error = "1" });
         }
+    }
+
+    /// <summary>
+    /// Extract the authoritative payment_status from a Transaction Enquiry response.
+    /// `transaction` may be an array (take the first) or a single object.
+    /// </summary>
+    private static string? ExtractEnquiryPaymentStatus(JsonElement enquiry)
+    {
+        if (enquiry.ValueKind != JsonValueKind.Object) return null;
+        if (!enquiry.TryGetProperty(JsonKeys.Transaction, out var txnProp)) return null;
+
+        JsonElement txn;
+        if (txnProp.ValueKind == JsonValueKind.Array)
+        {
+            if (txnProp.GetArrayLength() == 0) return null;
+            txn = txnProp[0];
+        }
+        else if (txnProp.ValueKind == JsonValueKind.Object)
+        {
+            txn = txnProp;
+        }
+        else
+        {
+            return null;
+        }
+
+        // payment_status is the source-of-truth field; fall back to transaction.status.
+        return JsonUtils.TryGetString(txn, "payment_status")
+            ?? JsonUtils.TryGetString(txn, JsonKeys.Status);
     }
 
     /// <summary>
@@ -269,16 +335,16 @@ public class HomeController : Controller
                 return BadRequest(new { error = "Empty callback body." });
 
             var accessSecret = _config.AccessSecret;
-        
-            var root = PayloadHelperUtils.ParseResponse(raw, accessSecret);
 
-            if (!SignatureVerifier.VerifyCallbackSignature(root, accessSecret))
+            // Version-aware verification (v4 signed/encrypted + legacy), returns the verified event payload.
+            var result = SignatureVerifier.VerifyCallback(raw, accessSecret);
+            if (!result.Success || !result.Payload.HasValue)
             {
-                logger.ErrorWithCaller("PaymentCallback(POST) - Signature verification failed.");
+                logger.ErrorWithCaller($"PaymentCallback(POST) - Signature verification failed: {result.Message}");
                 return BadRequest(new { error = "Invalid signature or response format." });
             }
-            // Return root JsonElement directly as JSON
-            return Ok(root);
+            // Return the verified event payload directly as JSON
+            return Ok(result.Payload.Value);
         }
         catch (Exception ex)
         {
@@ -304,14 +370,10 @@ public class HomeController : Controller
             try
             {
                 var accessSecret = _config.AccessSecret;
-                var root = PayloadHelperUtils.ParseResponse(response, accessSecret);
-                
-                // Extract payload
-                JsonElement payload = root;
-                if (root.TryGetProperty(JsonKeys.Payload, out var p))
-                {
-                    payload = p;
-                }
+
+                // Version-aware verification returns the verified event payload (v4 + legacy).
+                var result = SignatureVerifier.VerifyCallback(response, accessSecret);
+                JsonElement payload = result.Payload ?? default;
 
                 // Extract transaction details
                 if (payload.TryGetProperty(JsonKeys.Transaction, out var txn) && txn.ValueKind == JsonValueKind.Object)
